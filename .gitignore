@@ -1,0 +1,41 @@
+# Nuxt dev/build outputs
+.output
+.data
+.nuxt
+.nitro
+.cache
+dist
+
+# Node dependencies
+node_modules
+
+# Logs
+logs
+*.log
+
+# Misc
+.DS_Store
+.fleet
+.idea
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# 凍結 hook 一次性授權 sentinel（runtime 產物，不進版控）
+.claude/tmp/
+
+# Local env files
+.env
+.env.*
+!.env.example
+
+# Nuxt test-utils 自動產生的 setup 標記
+.nuxtrc
+
+# husky
+.husky/_/
+
+# Playwright（test-results* / playwright-report* 涵蓋主、gate、vibe 各自的輸出目錄）
+test/e2e/test-results*/
+test/e2e/screenshots/
+playwright-report*/
