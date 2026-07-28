@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ModuleSpec } from '~/modules/types'
+import type { ModuleSpec, ModuleStatus } from '~/modules/types'
 import { computed } from 'vue'
 import ModuleSection from '~/components/modules/ModuleSection.vue'
 import { SPORT_LABEL, STATUS_LABEL } from '~/modules/types'
@@ -7,6 +7,13 @@ import { SPORT_LABEL, STATUS_LABEL } from '~/modules/types'
 // 模組展示頁範本：吃一個 ModuleSpec，渲染標題列 + 五個固定區塊
 // （模組呈現／數據資料／使用技術／交接說明／參考資料）。
 const props = defineProps<{ module: ModuleSpec }>()
+
+const STATUS_COLOR: Record<ModuleStatus, 'success' | 'info' | 'neutral'> = {
+  done: 'success',
+  wip: 'info',
+  planned: 'neutral',
+}
+
 const m = computed(() => props.module)
 </script>
 
@@ -25,7 +32,7 @@ const m = computed(() => props.module)
         <h1 class="text-2xl font-bold tracking-tight">
           {{ m.title }}
         </h1>
-        <UBadge :color="m.status === 'done' ? 'success' : 'neutral'" variant="subtle">
+        <UBadge :color="STATUS_COLOR[m.status]" variant="subtle">
           {{ STATUS_LABEL[m.status] }}
         </UBadge>
         <UBadge color="info" variant="subtle">
