@@ -10,7 +10,10 @@
  * 4. createChartLayout()      — 依軌跡資料動態算出座標軸範圍與等比例 aspect
  *
  * 座標系(單位皆為 cm):x = 左右(捕手視角)、y = 投手方向距離、z = 高度
+ * 完整定義見 spec/domain/baseball-field-coordinates.md
  */
+
+import { getStrikeZone, HOME_PLATE, HOME_PLATE_POINTS } from '~/components/baseball-field/core/fieldGeometry'
 
 export type Point3D = [number, number, number]
 
@@ -24,24 +27,11 @@ export interface PitchAnalysisResult {
   pitch_velocity?: number | null
 }
 
-/** 本壘板半寬(cm),MLB 規格 17 吋 = 43.18cm */
-export const PLATE_HALF_WIDTH_CM = 21.59
-/**
- * 好球帶上緣 ≈ 身高 × 0.535(與 2D 落點圖 useStrikeZoneScale 同一比例)。
- * 不 export:避免與 useStrikeZoneScale 的同名常數在 Nuxt auto-import 撞名
- */
-const SZ_TOP_RATIO = 0.535
-/** 好球帶下緣 ≈ 身高 × 0.27 */
-const SZ_BOT_RATIO = 0.27
+/** 本壘板半寬(cm)。場地幾何的單一來源見 baseball-field/core/fieldGeometry.ts */
+export const PLATE_HALF_WIDTH_CM = HOME_PLATE.halfWidth
 
 /** 本壘板頂面五個點(cm),尖端朝捕手(y=0),前緣在 y=43.18 */
-const HOME_PLATE_TOP: Point3D[] = [
-  [0, 0, 0],
-  [-PLATE_HALF_WIDTH_CM, PLATE_HALF_WIDTH_CM, 0],
-  [-PLATE_HALF_WIDTH_CM, PLATE_HALF_WIDTH_CM * 2, 0],
-  [PLATE_HALF_WIDTH_CM, PLATE_HALF_WIDTH_CM * 2, 0],
-  [PLATE_HALF_WIDTH_CM, PLATE_HALF_WIDTH_CM, 0],
-]
+const HOME_PLATE_TOP: Point3D[] = HOME_PLATE_POINTS.map(([x, y]) => [x, y, 0] as Point3D)
 
 /** aspectratio 的換算基準:每 200cm 對應 1 個視覺單位 */
 const CM_PER_ASPECT_UNIT = 200
@@ -103,13 +93,12 @@ export function buildStrikeZoneCorners(
   batterHeightCm: number,
   yPlaneCm: number,
 ): [Point3D, Point3D, Point3D, Point3D] {
-  const zTop = SZ_TOP_RATIO * batterHeightCm
-  const zBottom = SZ_BOT_RATIO * batterHeightCm
+  const { left, right, top, bottom } = getStrikeZone(batterHeightCm)
   return [
-    [-PLATE_HALF_WIDTH_CM, yPlaneCm, zTop],
-    [PLATE_HALF_WIDTH_CM, yPlaneCm, zTop],
-    [PLATE_HALF_WIDTH_CM, yPlaneCm, zBottom],
-    [-PLATE_HALF_WIDTH_CM, yPlaneCm, zBottom],
+    [left, yPlaneCm, top],
+    [right, yPlaneCm, top],
+    [right, yPlaneCm, bottom],
+    [left, yPlaneCm, bottom],
   ]
 }
 

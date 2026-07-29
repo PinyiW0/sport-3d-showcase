@@ -7,6 +7,10 @@
  * - The zone width is fixed by the plate; the zone *height* is driven by the
  *   per-batter `sz_top` / `sz_bot` measurements — this is how the 3x3 grid
  *   adjusts to the batter's height.
+ *
+ * The underlying field geometry (in cm) lives in
+ * `baseball-field/core/fieldGeometry.ts`; see
+ * `spec/domain/baseball-field-coordinates.md` for the full spec.
  */
 
 /** A batter's strike zone, as measured upper/lower boundaries. */
@@ -16,8 +20,10 @@ export interface StrikeZone {
   /** Lower edge of the zone, in feet. */
   sz_bot: number
   /**
-   * Half-width of the zone in feet (plate half-width, optionally widened by
-   * the ball radius). Defaults to `0.83` when omitted.
+   * Half-width of the zone in feet. Defaults to `DEFAULT_PLATE_HALF_WIDTH`
+   * (21.59cm ≈ 0.708 ft) when omitted — the bare 17" plate half-width, so a
+   * pitch is a strike when its *center* is inside. Pass a value widened by the
+   * ball radius (+3.65cm) to switch to ball-edge semantics.
    */
   plate_half_width?: number
 }

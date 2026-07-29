@@ -2,7 +2,9 @@ import type { StrikeZone } from './types'
 import { describe, expect, it } from 'vitest'
 import { classifyCell, createFieldLayout, createStrikeZoneScale, pitchFromStrikeZonePoint, strikeZoneFromHeight } from './useStrikeZoneScale'
 
-const zone: StrikeZone = { sz_top: 3.5, sz_bot: 1.5, plate_half_width: 0.83 }
+// 任意測試寬度,刻意不等於 DEFAULT_PLATE_HALF_WIDTH,好驗證 override 真的生效。
+const TEST_HALF_WIDTH = 0.83
+const zone: StrikeZone = { sz_top: 3.5, sz_bot: 1.5, plate_half_width: TEST_HALF_WIDTH }
 
 describe('createStrikeZoneScale', () => {
   it('derives view height from the real-world aspect ratio (uniform scale)', () => {
@@ -30,7 +32,7 @@ describe('createStrikeZoneScale', () => {
   it('places the zone corners on the plate/zone edges', () => {
     const s = createStrikeZoneScale(zone)
     // Screen top-left is at +halfWidth because the x-axis is flipped.
-    const topLeft = s.toSvg(0.83, zone.sz_top)
+    const topLeft = s.toSvg(TEST_HALF_WIDTH, zone.sz_top)
     expect(topLeft.x).toBeCloseTo(s.zoneRect.x, 6)
     expect(topLeft.y).toBeCloseTo(s.zoneRect.y, 6)
     expect(s.zoneRect.width).toBeGreaterThan(0)

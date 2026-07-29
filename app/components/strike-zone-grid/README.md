@@ -14,6 +14,7 @@
 | `public/samples/bt3d/pitches.json` | 樣本(25 球合併,18KB) |
 | `app/components/strike-zone-grid/StrikeZone.vue` | SVG 渲染九宮格、本壘板裝飾、落點圓點 |
 | `app/components/strike-zone-grid/core/useStrikeZoneScale.ts` | 座標轉換、縮放、九宮格幾何、好壞球判定(純邏輯,有單元測試) |
+| `app/components/baseball-field/core/fieldGeometry.ts` | **本模組的外部依賴**:場地與好球帶常數的單一來源(cm),本模組除以 `CM_PER_FOOT` 轉英尺使用。整包 cp 時要一併帶走。規格見 [spec/domain/baseball-field-coordinates.md](../../../spec/domain/baseball-field-coordinates.md) |
 | `app/components/strike-zone-grid/core/types.ts` | `StrikeZone`、`PitchLocation` 型別定義 |
 
 ## 實作方式
