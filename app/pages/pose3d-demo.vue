@@ -39,12 +39,12 @@ function onScrub(event: Event) {
       :description="loadError"
     />
 
-    <div v-else-if="!pitch" class="rounded-lg border border-neutral-200 p-8 text-center text-sm text-neutral-400 dark:border-neutral-700">
+    <div v-else-if="!pitch" class="border border-neutral-200 p-8 text-center text-sm text-neutral-400 dark:border-neutral-700">
       載入骨架資料中…
     </div>
 
     <template v-else>
-      <div class="rounded-lg border border-neutral-200 p-4 dark:border-neutral-700">
+      <div class="border border-neutral-200 p-4 dark:border-neutral-700">
         <UTabs
           v-model="viewMode"
           :items="VIEW_MODES.map(m => ({ label: m.label, value: m.value }))"
@@ -56,7 +56,7 @@ function onScrub(event: Event) {
         <Pose3dSkeleton v-else :frames="pitch.frames" :time-ms="clockMs" :height="520" />
       </div>
 
-      <div class="flex flex-wrap items-center gap-4 rounded-lg border border-neutral-200 p-4 dark:border-neutral-700">
+      <div class="flex flex-wrap items-center gap-4 border border-neutral-200 p-4 dark:border-neutral-700">
         <UButton size="sm" @click="playing = !playing">
           {{ playing ? '暫停' : '播放' }}
         </UButton>

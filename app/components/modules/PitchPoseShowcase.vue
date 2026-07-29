@@ -19,12 +19,12 @@ const { pitch, loadError, clockMs, playing, rate, jumpToRelease } = usePose3dCli
       :description="loadError"
     />
 
-    <div v-else-if="!pitch" class="rounded-lg border border-dashed border-neutral-300 py-16 text-center text-sm text-neutral-400 dark:border-neutral-700">
+    <div v-else-if="!pitch" class="border border-dashed border-neutral-300 py-16 text-center text-sm text-neutral-400 dark:border-neutral-700">
       載入骨架資料中…
     </div>
 
     <template v-else>
-      <div class="rounded-lg bg-neutral-100 dark:bg-neutral-800">
+      <div class="bg-neutral-100 dark:bg-neutral-800">
         <Pose3dHuman v-if="mode === 'human'" :frames="pitch.frames" :time-ms="clockMs" :height="440" />
         <Pose3dSkeleton v-else :frames="pitch.frames" :time-ms="clockMs" :height="440" />
       </div>

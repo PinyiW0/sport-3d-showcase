@@ -61,7 +61,7 @@ const metrics = computed(() => {
         <h2 class="text-sm font-medium opacity-70">
           V 形指針（internal-project-c）
         </h2>
-        <div class="rounded-lg border border-neutral-200 p-4 dark:border-neutral-700">
+        <div class="border border-neutral-200 p-4 dark:border-neutral-700">
           <SpinTiltClock
             v-if="tilt"
             :degrees="tilt.degrees"
@@ -75,7 +75,7 @@ const metrics = computed(() => {
         <h2 class="text-sm font-medium opacity-70">
           箭頭指針（internal-project-a）
         </h2>
-        <div class="rounded-lg border border-neutral-200 p-4 dark:border-neutral-700">
+        <div class="border border-neutral-200 p-4 dark:border-neutral-700">
           <SpinTiltClock
             v-if="tilt"
             :degrees="tilt.degrees"
@@ -89,7 +89,7 @@ const metrics = computed(() => {
         <h2 class="text-sm font-medium opacity-70">
           3D 轉軸指針（three.js）
         </h2>
-        <div class="overflow-hidden rounded-lg bg-black">
+        <div class="overflow-hidden bg-black">
           <BaseballSpinViewer
             :data="spinData ?? null"
             :speed="1 / 60"

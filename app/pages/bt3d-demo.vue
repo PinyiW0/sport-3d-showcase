@@ -49,11 +49,11 @@ const shownPitches = computed(() => (current.value ? [current.value.location] : 
     />
 
     <div class="grid grid-cols-1 gap-6 md:grid-cols-[1fr_340px]">
-      <ul class="flex max-h-130 flex-col gap-1 overflow-y-auto rounded-lg border border-neutral-200 p-2 dark:border-neutral-700">
+      <ul class="flex max-h-130 flex-col gap-1 overflow-y-auto border border-neutral-200 p-2 dark:border-neutral-700">
         <li v-for="item in items" :key="item.ts">
           <button
             type="button"
-            class="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors"
+            class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition-colors"
             :class="item.index === selected
               ? 'bg-primary/10 ring-1 ring-primary'
               : 'hover:bg-neutral-100 dark:hover:bg-neutral-800'"
@@ -61,7 +61,7 @@ const shownPitches = computed(() => (current.value ? [current.value.location] : 
           >
             <span class="flex items-center gap-2">
               <span
-                class="inline-block size-2.5 rounded-full"
+                class="inline-block size-2.5"
                 :class="item.strike ? 'bg-primary' : 'bg-error'"
               />
               <span class="font-medium tabular-nums">#{{ item.index + 1 }}</span>
@@ -80,7 +80,7 @@ const shownPitches = computed(() => (current.value ? [current.value.location] : 
       </ul>
 
       <div class="flex flex-col gap-2">
-        <div class="rounded-lg border border-neutral-200 p-4 dark:border-neutral-700">
+        <div class="border border-neutral-200 p-4 dark:border-neutral-700">
           <StrikeZone :zone="zone" :pitches="shownPitches" :pitch-radius="5" show-field />
         </div>
         <p v-if="current" class="text-center text-sm text-neutral-500">

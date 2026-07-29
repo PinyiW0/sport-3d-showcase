@@ -9,7 +9,7 @@ defineProps<{
 </script>
 
 <template>
-  <section class="rounded-xl border border-neutral-200 dark:border-neutral-800">
+  <section class="border border-neutral-200 dark:border-neutral-800">
     <header class="flex items-center gap-2 border-b border-neutral-100 px-5 py-3 dark:border-neutral-800/70">
       <UIcon v-if="icon" :name="icon" class="size-5 text-neutral-400" />
       <h2 class="text-base font-semibold">

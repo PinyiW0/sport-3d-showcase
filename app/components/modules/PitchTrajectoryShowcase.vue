@@ -48,7 +48,7 @@ const metrics = computed(() => {
     />
 
     <!-- 圖表為暗色主題（沿用 project-b 鷹眼系統配色），容器同步壓深避免黑圖貼白框 -->
-    <div class="overflow-x-auto rounded-lg bg-neutral-950">
+    <div class="overflow-x-auto bg-neutral-950">
       <PitchTrajectoryChart
         :trajectory="trajectory"
         :width="620"
