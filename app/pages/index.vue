@@ -3,8 +3,7 @@
      依 creative-direction §3 吃行銷頁的 display 規則，hero 大標才解得開 text-5xl -->
 <script setup lang="ts">
 import type { ModuleSpec, ModuleStatus } from '~/modules/types'
-// Sport-3D 模組展示索引。新增模組往 app/modules/registry.ts 補一筆 ModuleSpec 即可。
-// 顯式 import：auto-import 會把 components/common/ 下的元件註冊成 CommonBorderGlow
+import BaseballLoader from '~/components/common/BaseballLoader.vue'
 import BorderGlow from '~/components/common/BorderGlow.vue'
 import LightRays from '~/components/common/LightRays.vue'
 import ModelViewer from '~/components/common/ModelViewer.vue'
@@ -14,6 +13,8 @@ import TargetCursor from '~/components/common/TargetCursor.vue'
 import ThreadLines from '~/components/common/ThreadLines.vue'
 import { modules } from '~/modules/registry'
 import { SPORT_LABEL, STATUS_LABEL } from '~/modules/types'
+// Sport-3D 模組展示索引。新增模組往 app/modules/registry.ts 補一筆 ModuleSpec 即可。
+// 顯式 import：auto-import 會把 components/common/ 下的元件註冊成 CommonBorderGlow
 
 // hero 的光只在深色主題掛：白光在白底上發不出來，淺色主題跑這個 WebGL context 是純浪費
 const colorMode = useColorMode()
@@ -208,7 +209,11 @@ function resetPreview(event: MouseEvent) {
                 :max-zoom-distance="4"
                 :ambient-intensity="0.6"
                 :key-light-intensity="1.4"
-              />
+              >
+                <template #loader>
+                  <BaseballLoader :size="52" :animation-duration="3200" label="載入模型" />
+                </template>
+              </ModelViewer>
             </div>
           </ClientOnly>
         </div>
