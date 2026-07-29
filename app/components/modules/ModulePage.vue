@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ModuleSpec } from '~/modules/types'
+import type { ModuleSpec, ModuleStatus } from '~/modules/types'
 import { computed } from 'vue'
 import ModuleSection from '~/components/modules/ModuleSection.vue'
 import { SPORT_LABEL, STATUS_LABEL } from '~/modules/types'
@@ -7,6 +7,13 @@ import { SPORT_LABEL, STATUS_LABEL } from '~/modules/types'
 // 模組展示頁範本：吃一個 ModuleSpec，渲染標題列 + 五個固定區塊
 // （模組呈現／數據資料／使用技術／交接說明／參考資料）。
 const props = defineProps<{ module: ModuleSpec }>()
+
+const STATUS_COLOR: Record<ModuleStatus, 'success' | 'info' | 'neutral'> = {
+  done: 'success',
+  wip: 'info',
+  planned: 'neutral',
+}
+
 const m = computed(() => props.module)
 </script>
 
@@ -25,7 +32,7 @@ const m = computed(() => props.module)
         <h1 class="text-2xl font-bold tracking-tight">
           {{ m.title }}
         </h1>
-        <UBadge :color="m.status === 'done' ? 'success' : 'neutral'" variant="subtle">
+        <UBadge :color="STATUS_COLOR[m.status]" variant="subtle">
           {{ STATUS_LABEL[m.status] }}
         </UBadge>
         <UBadge color="info" variant="subtle">
@@ -42,7 +49,7 @@ const m = computed(() => props.module)
           <span
             v-for="tag in m.tags"
             :key="tag"
-            class="rounded bg-neutral-100 px-1.5 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
+            class="bg-neutral-100 px-1.5 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
           >{{ tag }}</span>
         </div>
         <UButton
@@ -63,7 +70,7 @@ const m = computed(() => props.module)
       <component :is="m.presentation" v-if="m.presentation" />
       <div
         v-else
-        class="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-neutral-300 py-16 text-center dark:border-neutral-700"
+        class="flex flex-col items-center justify-center gap-2 border border-dashed border-neutral-300 py-16 text-center dark:border-neutral-700"
       >
         <UIcon name="i-heroicons-wrench-screwdriver" class="size-8 text-neutral-400" />
         <p class="text-sm text-neutral-500">
@@ -99,7 +106,7 @@ const m = computed(() => props.module)
         <summary class="cursor-pointer text-sm text-neutral-500 transition hover:text-neutral-800 dark:hover:text-neutral-200">
           檢視樣本資料
         </summary>
-        <pre class="mt-2 overflow-x-auto rounded-lg bg-neutral-900 p-4 text-xs leading-relaxed text-neutral-100"><code>{{ m.data.sample }}</code></pre>
+        <pre class="mt-2 overflow-x-auto bg-neutral-900 p-4 text-xs leading-relaxed text-neutral-100"><code>{{ m.data.sample }}</code></pre>
       </details>
     </ModuleSection>
 
@@ -109,7 +116,7 @@ const m = computed(() => props.module)
         <li
           v-for="t in m.tech"
           :key="t"
-          class="rounded-md bg-neutral-100 px-2.5 py-1 text-sm dark:bg-neutral-800"
+          class="bg-neutral-100 px-2.5 py-1 text-sm dark:bg-neutral-800"
         >
           {{ t }}
         </li>
@@ -141,7 +148,7 @@ const m = computed(() => props.module)
             <li
               v-for="d in m.handoff.dependencies"
               :key="d"
-              class="rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-xs dark:bg-neutral-800"
+              class="bg-neutral-100 px-1.5 py-0.5 font-mono text-xs dark:bg-neutral-800"
             >
               {{ d }}
             </li>
