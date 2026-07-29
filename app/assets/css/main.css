@@ -15,6 +15,12 @@
   }
 }
 
+/* 圓角收斂為直角：搭配 TargetCursor 的方框準星，載體轉角與準星同語彙。
+   這裡管 NuxtUI 元件，站上手寫的 Tailwind class 則直接不掛 rounded-* */
+:root {
+  --ui-radius: 0;
+}
+
 /* motion token（動效恆定層——creative-direction.md §4 硬原則強制引用，素體即需存在） */
 @theme static {
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);

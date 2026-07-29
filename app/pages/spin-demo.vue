@@ -69,7 +69,7 @@ const metrics = computed(() => {
         <h2 class="text-sm font-medium opacity-70">
           我方渲染（three.js）
         </h2>
-        <div class="rounded-lg bg-black">
+        <div class="bg-black">
           <BaseballSpinViewer
             ref="viewerRef"
             :data="spinData ?? null"
@@ -82,7 +82,7 @@ const metrics = computed(() => {
         <h2 class="text-sm font-medium opacity-70">
           後端參考（result.gif）
         </h2>
-        <div class="rounded-lg bg-black">
+        <div class="bg-black">
           <img :src="gifUrl" alt="後端渲染參考動畫" class="aspect-square w-full object-contain">
         </div>
       </div>

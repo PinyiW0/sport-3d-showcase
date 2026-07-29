@@ -40,11 +40,11 @@ const zoomOptions = [
     />
 
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-[300px_1fr]">
-      <ul class="flex max-h-130 flex-col gap-1 overflow-y-auto rounded-lg border border-neutral-200 p-2 dark:border-neutral-700">
+      <ul class="flex max-h-130 flex-col gap-1 overflow-y-auto border border-neutral-200 p-2 dark:border-neutral-700">
         <li v-for="pitch in pitches" :key="pitch.ts">
           <button
             type="button"
-            class="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors"
+            class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition-colors"
             :class="pitch.index === selected
               ? 'bg-primary/10 ring-1 ring-primary'
               : 'hover:bg-neutral-100 dark:hover:bg-neutral-800'"
@@ -63,7 +63,7 @@ const zoomOptions = [
 
       <div class="flex flex-col gap-2">
         <!-- 圖表為暗色主題（沿用 project-b 鷹眼系統配色），容器同步壓深避免黑圖貼白框 -->
-        <div class="overflow-x-auto rounded-lg bg-neutral-950 p-4">
+        <div class="overflow-x-auto bg-neutral-950 p-4">
           <PitchTrajectoryChart
             :trajectory="trajectory"
             :zoom="zoom"

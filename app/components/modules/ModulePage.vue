@@ -49,7 +49,7 @@ const m = computed(() => props.module)
           <span
             v-for="tag in m.tags"
             :key="tag"
-            class="rounded bg-neutral-100 px-1.5 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
+            class="bg-neutral-100 px-1.5 py-0.5 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"
           >{{ tag }}</span>
         </div>
         <UButton
@@ -70,7 +70,7 @@ const m = computed(() => props.module)
       <component :is="m.presentation" v-if="m.presentation" />
       <div
         v-else
-        class="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-neutral-300 py-16 text-center dark:border-neutral-700"
+        class="flex flex-col items-center justify-center gap-2 border border-dashed border-neutral-300 py-16 text-center dark:border-neutral-700"
       >
         <UIcon name="i-heroicons-wrench-screwdriver" class="size-8 text-neutral-400" />
         <p class="text-sm text-neutral-500">
@@ -106,7 +106,7 @@ const m = computed(() => props.module)
         <summary class="cursor-pointer text-sm text-neutral-500 transition hover:text-neutral-800 dark:hover:text-neutral-200">
           檢視樣本資料
         </summary>
-        <pre class="mt-2 overflow-x-auto rounded-lg bg-neutral-900 p-4 text-xs leading-relaxed text-neutral-100"><code>{{ m.data.sample }}</code></pre>
+        <pre class="mt-2 overflow-x-auto bg-neutral-900 p-4 text-xs leading-relaxed text-neutral-100"><code>{{ m.data.sample }}</code></pre>
       </details>
     </ModuleSection>
 
@@ -116,7 +116,7 @@ const m = computed(() => props.module)
         <li
           v-for="t in m.tech"
           :key="t"
-          class="rounded-md bg-neutral-100 px-2.5 py-1 text-sm dark:bg-neutral-800"
+          class="bg-neutral-100 px-2.5 py-1 text-sm dark:bg-neutral-800"
         >
           {{ t }}
         </li>
@@ -148,7 +148,7 @@ const m = computed(() => props.module)
             <li
               v-for="d in m.handoff.dependencies"
               :key="d"
-              class="rounded bg-neutral-100 px-1.5 py-0.5 font-mono text-xs dark:bg-neutral-800"
+              class="bg-neutral-100 px-1.5 py-0.5 font-mono text-xs dark:bg-neutral-800"
             >
               {{ d }}
             </li>

@@ -52,7 +52,7 @@ const metrics = computed(() => {
       :description="String(error)"
     />
 
-    <div class="mx-auto w-full max-w-sm overflow-hidden rounded-lg bg-black">
+    <div class="mx-auto w-full max-w-sm overflow-hidden bg-black">
       <BaseballSpinViewer
         ref="viewerRef"
         :data="spinData ?? null"
