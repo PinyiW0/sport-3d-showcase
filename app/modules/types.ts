@@ -4,7 +4,10 @@ import type { Component } from 'vue'
 // metadata 與五個固定區塊內容（模組呈現／數據資料／使用技術／交接說明／參考資料）。
 // 新增模組＝往 registry 補一筆 ModuleSpec（＋選配呈現元件）。
 
-export type ModuleStatus = 'done' | 'planned'
+// done   = 研究告一段落、呈現與資料都定案
+// wip    = 已有可運作實作可以點進去看，但還在調整、未定案
+// planned = 尚未動工，只有文字輪廓
+export type ModuleStatus = 'done' | 'wip' | 'planned'
 export type Sport = 'baseball' | 'football'
 
 /** 數據資料：這個模組吃什麼、格式為何、樣本在哪 */
@@ -67,5 +70,6 @@ export const SPORT_LABEL: Record<Sport, string> = {
 
 export const STATUS_LABEL: Record<ModuleStatus, string> = {
   done: '已完成',
+  wip: '進行中',
   planned: '規劃中',
 }
