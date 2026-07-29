@@ -26,7 +26,11 @@
   "dependencies": {
     "@nuxt/ui": "^4.6.0",
     "@pinia/nuxt": "^0.11.3",
+    "@tresjs/cientos": "^5.8.1",
+    "@tresjs/core": "^5.8.3",
+    "gsap": "^3.15.0",
     "nuxt": "^4.4.2",
+    "ogl": "^1.0.11",
     "pinia": "^3.0.4",
     "pinia-plugin-persistedstate": "^4.7.1",
     "plotly.js-dist-min": "^3.7.0",
