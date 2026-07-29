@@ -617,16 +617,19 @@ const DesktopControls = defineComponent({
       截圖
     </button>
 
+    <!-- 載入指示可由使用端替換（例如換成主題相關的 loader）；沒給就用預設 -->
     <div v-if="!isLoaded" class="model-viewer-loader">
-      <img
-        v-if="placeholderSrc"
-        :src="placeholderSrc"
-        width="128"
-        height="128"
-        class="model-viewer-placeholder"
-        alt=""
-      >
-      <span v-else class="model-viewer-progress">載入中…</span>
+      <slot name="loader">
+        <img
+          v-if="placeholderSrc"
+          :src="placeholderSrc"
+          width="128"
+          height="128"
+          class="model-viewer-placeholder"
+          alt=""
+        >
+        <span v-else class="model-viewer-progress">載入中…</span>
+      </slot>
     </div>
 
     <!-- alpha + clearAlpha 0：原版沒設，canvas 會是一塊不透明黑底，
