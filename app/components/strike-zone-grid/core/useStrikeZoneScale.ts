@@ -1,28 +1,24 @@
 import type { MaybeRefOrGetter } from 'vue'
 import type { PitchLocation, StrikeZone } from './types'
 import { computed, toValue } from 'vue'
+import { CM_PER_FOOT, getStrikeZone, HOME_PLATE } from '~/components/baseball-field/core/fieldGeometry'
 
 /**
- * Default plate half-width in feet. Aligned with the backend: the exact 17"
- * plate half-width (21.59cm / 30.48 ≈ 0.708 ft), NOT widened by a ball radius.
+ * Default plate half-width in feet — the exact 17" plate half-width, NOT
+ * widened by a ball radius. Derived from the shared cm-based field geometry
+ * (`baseball-field/core/fieldGeometry.ts`), the single source of truth.
  */
-export const DEFAULT_PLATE_HALF_WIDTH = 0.708
-
-/** Backend strike-zone height ratios: edge z = ratio × batter height. */
-export const SZ_BOT_RATIO = 0.27
-export const SZ_TOP_RATIO = 0.535
-
-const CM_PER_FOOT = 30.48
+export const DEFAULT_PLATE_HALF_WIDTH = HOME_PLATE.halfWidth / CM_PER_FOOT
 
 /**
- * Build a {@link StrikeZone} from a batter's height, matching the backend
- * formula (`z_bottom = 0.27 × H`, `z_top = 0.535 × H`). The backend works in
- * centimetres; this returns feet to match the rest of the frontend.
+ * Build a {@link StrikeZone} from a batter's height. The shared geometry works
+ * in centimetres; this returns feet to match the rest of this module.
  */
 export function strikeZoneFromHeight(heightCm: number, plateHalfWidth?: number): StrikeZone {
+  const { top, bottom } = getStrikeZone(heightCm)
   return {
-    sz_top: (SZ_TOP_RATIO * heightCm) / CM_PER_FOOT,
-    sz_bot: (SZ_BOT_RATIO * heightCm) / CM_PER_FOOT,
+    sz_top: top / CM_PER_FOOT,
+    sz_bot: bottom / CM_PER_FOOT,
     ...(plateHalfWidth != null ? { plate_half_width: plateHalfWidth } : {}),
   }
 }

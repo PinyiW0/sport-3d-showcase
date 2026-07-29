@@ -13,6 +13,7 @@
 | `app/composables/useBt3dSamples.ts` | 樣本載入(與 `strike-zone-grid` 共用同一份 25 球資料) |
 | `app/components/pitch-trajectory/PitchTrajectoryChart.vue` | Plotly 圖表元件(動態載入 plotly、`plotly.react()` 渲染) |
 | `app/components/pitch-trajectory/core/usePitch3d.ts` | 純函式模組:軌跡解析、九宮格角點、traces/layout 建構(有單元測試) |
+| `app/components/baseball-field/core/fieldGeometry.ts` | **本模組的外部依賴**:場地與好球帶常數的單一來源(cm),本模組直接使用。整包 cp 時要一併帶走。規格見 [spec/domain/baseball-field-coordinates.md](../../../spec/domain/baseball-field-coordinates.md) |
 | `public/samples/bt3d/pitches.json` | 樣本(25 球合併,18KB) |
 
 **未搬入**:來源的早期版本 3D 圖(`app/components/3d/BaseballChart.vue`、`app/utils/useBaseball3d.ts`),在來源已無頁面使用。

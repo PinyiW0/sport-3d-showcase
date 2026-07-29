@@ -270,7 +270,8 @@ export const modules: ModuleSpec[] = [
     },
     handoff: {
       files: [
-        'app/components/pitch-trajectory/（整包 cp 即可，含 core/ 純 TS 零 Vue 依賴與其單元測試）',
+        'app/components/pitch-trajectory/（整包 cp，含 core/ 純 TS 零 Vue 依賴與其單元測試）',
+        'app/components/baseball-field/（場地與好球帶常數的單一來源，必須一併帶走）',
         'app/composables/useBt3dSamples.ts（樣本讀取，與 strike-zone-grid 共用）',
         'public/samples/bt3d/pitches.json',
         'app/types/plotly.d.ts（plotly.js-dist-min 沒附型別）',
@@ -306,14 +307,15 @@ export const modules: ModuleSpec[] = [
       'Vue 3 / Nuxt 4',
     ],
     data: {
-      summary: '每球的入壘點 [x, y, z]（cm）；好球帶框不在資料裡，由固定 175cm 身高比例推算，內部計算轉英尺。',
+      summary: '每球的入壘點 [x, y, z]（cm）；好球帶框不在資料裡，由打者身高比例推算（模組呈現可切少棒／青少棒／青棒／成棒），內部計算轉英尺。',
       format: 'PitchLocation / StrikeZone（core/types.ts；由 pitchFromStrikeZonePoint 從後端 strike_zone_point 轉換）',
       sample: BT3D_SAMPLE,
       sampleUrl: 'public/samples/bt3d/pitches.json（25 球合併，18KB）',
     },
     handoff: {
       files: [
-        'app/components/strike-zone-grid/（整包 cp 即可，含 core/ 純 TS 零 Vue 依賴與其單元測試）',
+        'app/components/strike-zone-grid/（整包 cp，含 core/ 純 TS 零 Vue 依賴與其單元測試）',
+        'app/components/baseball-field/（場地與好球帶常數的單一來源，必須一併帶走）',
         'app/composables/useBt3dSamples.ts（樣本讀取，與 pitch-trajectory 共用）',
         'public/samples/bt3d/pitches.json',
       ],
@@ -323,11 +325,13 @@ export const modules: ModuleSpec[] = [
         '格號顯示 show-labels、本壘板與打擊區 show-field',
         '落點半徑 pitch-radius',
         '本壘板半寬 DEFAULT_PLATE_HALF_WIDTH（0.708 ft，MLB 17 吋規格）',
+        '打者級別 BATTER_LEVELS（少棒 134.3／青少棒 156.5／青棒 169.7／成棒 172 cm，只改好球帶上下緣）',
       ],
     },
     references: [
       { label: '來源：internal-template @ feature/strike-zone（doc/bt3d.md）' },
       { label: '座標：px = 距本壘板中心水平位移、pz = 離地高度，單位英尺' },
+      { label: '場地與好球帶規格：spec/domain/baseball-field-coordinates.md（§5 為打者級別與代表身高的推導）' },
     ],
   },
   {
