@@ -39,6 +39,15 @@ const BT3D_SAMPLE = `{
   "vertical_offset": 71.05
 }`
 
+// 落點分布樣本（合成資料，格式為 analysis_result.json 的子集加投手與球種；不含軌跡）
+const DISTRIBUTION_SAMPLE = `{
+  "ts": "2026-07-20T18:31:00.127000",
+  "pitcher": "P01",
+  "pitch_type": "SL",
+  "strike_zone_point": [2.89, 21.59, 57.26],
+  "pitch_velocity": 123.81
+}`
+
 // pose3d 樣本（後端 outcome.json，只留前端讀得到的欄位；pose_3d 為 COCO-17 id → 座標）
 const POSE3D_SAMPLE = `{
   "pitch_id": "pitch_20260624_152029.893901_372197",
@@ -332,6 +341,50 @@ export const modules: ModuleSpec[] = [
       { label: '來源：internal-template @ feature/strike-zone（doc/bt3d.md）' },
       { label: '座標：px = 距本壘板中心水平位移、pz = 離地高度，單位英尺' },
       { label: '場地與好球帶規格：spec/domain/baseball-field-coordinates.md（§5 為打者級別與代表身高的推導）' },
+    ],
+  },
+  {
+    slug: 'pitch-distribution',
+    title: '落點分布圖',
+    sport: 'baseball',
+    status: 'wip',
+    summary: '一批投球在好球帶上的分布：九宮格熱區看集中在哪，散點疊圖看實際散布與框外的球，可依投手與球種篩選。與九宮格落點圖的分工是「這批球」對「這一球」。',
+    tags: ['SVG', 'heatmap', 'distribution', '2D'],
+    updated: '2026-07',
+    presentation: defineAsyncComponent(() => import('~/components/modules/PitchDistributionShowcase.vue')),
+    tech: [
+      '純 SVG（無 3D 函式庫、無圖表庫）',
+      '同色散點合併成單一 path：600 顆點只有 2 個 DOM 節點',
+      'fill-opacity 疊出密度，不必算 KDE',
+      '座標直接用 cm，SVG 單位 = 1cm 故天然等比例',
+      'Vue 3 / Nuxt 4',
+    ],
+    data: {
+      summary: '每球的入壘點 [x, y, z]（cm）加投手與球種兩個篩選維度；不需要軌跡。好球帶框由打者級別的代表身高推算。',
+      format: 'DistributionPitch（core/distribution.ts；由 useDistributionSamples 從後端 snake_case 轉換）',
+      sample: DISTRIBUTION_SAMPLE,
+      sampleUrl: 'public/samples/bt3d/distribution.json（600 球，79KB，合成資料）',
+    },
+    handoff: {
+      files: [
+        'app/components/pitch-distribution/（整包 cp，含 core/ 與其單元測試）',
+        'app/components/baseball-field/（場地與好球帶常數的單一來源，必須一併帶走）',
+        'app/composables/useDistributionSamples.ts（樣本讀取，Nuxt 專用）',
+        'public/samples/bt3d/distribution.json',
+        'scripts/gen-distribution-sample.mjs（樣本生成，npm run gen:sample）',
+      ],
+      dependencies: ['Nuxt 4（showcase 靠 auto-import 取得 ref/computed，模組本身只 import vue）', 'tailwindcss（元件的 class 樣式）'],
+      flexPoints: [
+        '好球帶四周留白 paddingFraction（預設 1 = 各留一倍好球帶尺寸）',
+        '落點半徑 pointRadius（預設 2cm）與 fill-opacity（0.32，重疊即熱區）',
+        '熱區／落點／格內球數三個顯示開關',
+        '打者級別（只改好球帶上下緣，不影響落點）',
+      ],
+    },
+    references: [
+      { label: '樣本為合成資料：真實的 pitches.json 只有 25 球且無 pitcher／pitch_type 欄位，撐不起篩選' },
+      { label: '各球種落點中心依球種特性設定（速球偏高、變化球偏低），是示意值不是量測值' },
+      { label: '場地與好球帶規格：spec/domain/baseball-field-coordinates.md' },
     ],
   },
   {
