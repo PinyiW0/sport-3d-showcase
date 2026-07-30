@@ -84,29 +84,30 @@ const m = computed(() => props.module)
       <p class="text-sm text-neutral-700 dark:text-neutral-300">
         {{ m.data.summary }}
       </p>
-      <dl v-if="m.data.format || m.data.sampleUrl" class="mt-3 space-y-1 text-sm">
-        <div v-if="m.data.format" class="flex gap-2">
-          <dt class="shrink-0 text-neutral-500">
-            格式
-          </dt>
-          <dd class="font-mono text-xs">
-            {{ m.data.format }}
-          </dd>
-        </div>
-        <div v-if="m.data.sampleUrl" class="flex gap-2">
-          <dt class="shrink-0 text-neutral-500">
-            樣本
-          </dt>
-          <dd class="font-mono text-xs">
-            {{ m.data.sampleUrl }}
-          </dd>
-        </div>
-      </dl>
-      <details v-if="m.data.sample" class="mt-3">
+      <!-- 格式、樣本路徑與樣本內容是同一組細節，一起收進摺疊區；外面只留 summary -->
+      <details v-if="m.data.format || m.data.sampleUrl || m.data.sample" class="mt-3">
         <summary class="cursor-pointer text-sm text-neutral-500 transition hover:text-neutral-800 dark:hover:text-neutral-200">
-          檢視樣本資料
+          {{ m.data.sample ? '檢視資料格式與樣本' : '檢視資料格式' }}
         </summary>
-        <pre class="mt-2 overflow-x-auto bg-neutral-900 p-4 text-xs leading-relaxed text-neutral-100"><code>{{ m.data.sample }}</code></pre>
+        <dl v-if="m.data.format || m.data.sampleUrl" class="mt-2 space-y-1 text-sm">
+          <div v-if="m.data.format" class="flex gap-2">
+            <dt class="shrink-0 text-neutral-500">
+              格式
+            </dt>
+            <dd class="font-mono text-xs">
+              {{ m.data.format }}
+            </dd>
+          </div>
+          <div v-if="m.data.sampleUrl" class="flex gap-2">
+            <dt class="shrink-0 text-neutral-500">
+              樣本
+            </dt>
+            <dd class="font-mono text-xs">
+              {{ m.data.sampleUrl }}
+            </dd>
+          </div>
+        </dl>
+        <pre v-if="m.data.sample" class="mt-2 overflow-x-auto bg-neutral-900 p-4 text-xs leading-relaxed text-neutral-100"><code>{{ m.data.sample }}</code></pre>
       </details>
     </ModuleSection>
 
