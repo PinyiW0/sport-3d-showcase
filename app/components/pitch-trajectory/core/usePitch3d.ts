@@ -13,7 +13,7 @@
  * 完整定義見 spec/domain/baseball-field-coordinates.md
  */
 
-import { getStrikeZone, HOME_PLATE, HOME_PLATE_POINTS } from '~/components/baseball-field/core/fieldGeometry'
+import { getStrikeZone, HOME_PLATE, HOME_PLATE_POINTS } from '../../baseball-field/core/fieldGeometry'
 
 export type Point3D = [number, number, number]
 
