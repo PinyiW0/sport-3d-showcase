@@ -1,7 +1,7 @@
 import type { MaybeRefOrGetter } from 'vue'
 import type { PitchLocation, StrikeZone } from './types'
 import { computed, toValue } from 'vue'
-import { CM_PER_FOOT, getStrikeZone, HOME_PLATE } from '~/components/baseball-field/core/fieldGeometry'
+import { CM_PER_FOOT, getStrikeZone, HOME_PLATE } from '../../baseball-field/core/fieldGeometry'
 
 /**
  * Default plate half-width in feet — the exact 17" plate half-width, NOT
