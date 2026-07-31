@@ -36,8 +36,8 @@ jobs:
       - name: Generate static site
         run: npm run generate
         env:
-          # repo 不叫 <user>.github.io，站台掛在 /sport-3d/ 子路徑下
-          NUXT_APP_BASE_URL: /sport-3d/
+          # repo 不叫 <user>.github.io，站台掛在 /sport-3d-showcase/ 子路徑下
+          NUXT_APP_BASE_URL: /sport-3d-showcase/
 
       - uses: actions/upload-pages-artifact@v3
         with:

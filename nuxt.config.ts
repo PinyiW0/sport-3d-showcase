@@ -5,7 +5,7 @@ export default defineNuxtConfig({
   // GitHub Pages 是純靜態託管：github-pages preset 會補上 .nojekyll
   // （否則 _nuxt/ 這種底線開頭資料夾會被 Jekyll 吃掉）與 404.html SPA fallback。
   //
-  // 站台掛在 /sport-3d/ 子路徑下，由 CI 的 NUXT_APP_BASE_URL 帶入——
+  // 站台掛在 /sport-3d-showcase/ 子路徑下，由 CI 的 NUXT_APP_BASE_URL 帶入——
   // app.baseURL 預設就讀這個環境變數，本機 dev 沒設就是根路徑。
   // public/ 靜態資源不吃 baseURL，要自己用 useAssetUrl() 接前綴。
   nitro: {
