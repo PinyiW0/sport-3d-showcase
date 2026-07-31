@@ -1,0 +1,55 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# deploy-pages 需要 pages:write 發布、id-token:write 做 OIDC 驗證
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同時只跑一個發布；排隊中的舊 commit 直接取消
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+          cache: npm
+
+      - uses: actions/configure-pages@v5
+
+      - name: Install
+        run: npm ci
+
+      - name: Generate static site
+        run: npm run generate
+        env:
+          # repo 不叫 <user>.github.io，站台掛在 /sport-3d/ 子路徑下
+          NUXT_APP_BASE_URL: /sport-3d/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .output/public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

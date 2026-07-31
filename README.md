@@ -43,5 +43,3 @@ npm run test:unit      # Vitest 單元測試
 git remote add upstream git@github.com:PinyiW0/Nuxt4-template-SDD.git
 git fetch upstream && git merge upstream/main   # 衝突多半落在 .claude/、config、deps
 ```
-
-> 備註：本 repo 內容涉及 internal 棒球研究題材，目前為個人 private；如需納入公司權限管理可用 GitHub transfer 移至 `internal` org。

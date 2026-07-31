@@ -7,6 +7,7 @@ import { POSE3D_RATES, usePose3dClip } from '~/composables/usePose3dClip'
 // 播放、調速、跳到出手瞬間。兩版並排對照在獨立頁 /pose3d-demo。
 withDefaults(defineProps<{ mode?: 'skeleton' | 'human' }>(), { mode: 'skeleton' })
 
+const asset = useAssetUrl()
 const { pitch, loadError, clockMs, playing, rate, jumpToRelease } = usePose3dClip()
 </script>
 
@@ -25,7 +26,7 @@ const { pitch, loadError, clockMs, playing, rate, jumpToRelease } = usePose3dCli
 
     <template v-else>
       <div class="bg-neutral-100 dark:bg-neutral-800">
-        <Pose3dHuman v-if="mode === 'human'" :frames="pitch.frames" :time-ms="clockMs" :height="440" />
+        <Pose3dHuman v-if="mode === 'human'" :frames="pitch.frames" :time-ms="clockMs" :height="440" :model-url="asset('/models/Xbot.glb')" />
         <Pose3dSkeleton v-else :frames="pitch.frames" :time-ms="clockMs" :height="440" />
       </div>
 

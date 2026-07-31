@@ -24,8 +24,9 @@ export interface DistributionSample {
  * server: false — public/ 靜態檔在 dev SSR 的 nitro 內部 fetch 拿不到（404），只在 client 抓。
  */
 export function useDistributionSamples() {
+  const asset = useAssetUrl()
   const { data, error, status } = useFetch<DistributionSample[]>(
-    '/samples/bt3d/distribution.json',
+    asset('/samples/bt3d/distribution.json'),
     { server: false },
   )
 

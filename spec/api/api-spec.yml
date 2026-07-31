@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
-  title: 學校棒球投球數據分析系統 API
+  title: 棒球投球數據分析系統 API
   description: |
-    本文件為學校棒球投球數據分析系統的後端 API 規格草稿（api_spec.yml）。
+    本文件為棒球投球數據分析系統的後端 API 規格草稿（api_spec.yml）。
 
     ### 設計原則
     1. **RESTful API**: 遵循 RESTful 設計風格，資源路徑清晰。

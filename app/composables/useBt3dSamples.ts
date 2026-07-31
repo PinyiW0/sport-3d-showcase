@@ -28,7 +28,8 @@ export interface Bt3dPitch {
  * server: false — public/ 靜態檔在 dev SSR 的 nitro 內部 fetch 拿不到（404），只在 client 抓。
  */
 export function useBt3dSamples() {
-  const { data, error, status } = useFetch<Bt3dSample[]>('/samples/bt3d/pitches.json', {
+  const asset = useAssetUrl()
+  const { data, error, status } = useFetch<Bt3dSample[]>(asset('/samples/bt3d/pitches.json'), {
     server: false,
   })
 

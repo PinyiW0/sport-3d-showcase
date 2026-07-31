@@ -37,6 +37,8 @@ const SZ_WIDTH = 284
 const route = useRoute()
 const slug = computed(() => String(route.params.slug))
 
+const asset = useAssetUrl()
+
 const needsBt3d = computed(() => slug.value === 'pitch-trajectory' || slug.value === 'strike-zone-grid')
 const needsPose = computed(() => slug.value === 'pitch-pose-skeleton' || slug.value === 'pitch-pose-human')
 
@@ -46,7 +48,7 @@ const SPIN_SAMPLES = ['sample1', 'sample2', 'sample3']
 const spinSampleIndex = ref(0)
 
 const { data: spinData } = useFetch(
-  () => `/samples/spin/${SPIN_SAMPLES[spinSampleIndex.value]}/result.json`,
+  () => asset(`/samples/spin/${SPIN_SAMPLES[spinSampleIndex.value]}/result.json`),
   {
     server: false,
     immediate: needsSpin.value,
@@ -174,6 +176,7 @@ const ready = computed(() => {
       <!-- 1/8 是對照後端 gif 的慢速；預覽要看得出「在轉」，調到 1/3 -->
       <BaseballSpinViewer
         :data="spinData ?? null"
+        :model-url="asset('/models/baseball_detail.glb')"
         :speed="1 / 3"
         :show-axis-arrow="true"
       />
@@ -230,6 +233,7 @@ const ready = computed(() => {
       :frames="poseClip.frames"
       :time-ms="clockMs"
       :height="PREVIEW_HEIGHT"
+      :model-url="asset('/models/Xbot.glb')"
       dark
     />
   </div>

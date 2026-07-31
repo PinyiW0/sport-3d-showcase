@@ -1,8 +1,6 @@
 # 時鐘轉軸（`/clock-demo`）
 
-> 盤面與資料慣例搬入自 `internal-project-a` @ `feature/#23-spin-tilt-clock`，
-> 指針樣式改採 `internal-project-c` @ `main` 的版本（皆為 `PitchDetailView.vue` 內嵌的轉軸 SVG）。
-> 抽成獨立元件，數學未改動。
+> 盤面與指針抽成獨立元件，數學未改動。
 
 把 `spin_tilt` 以 2D 時鐘面板呈現：盤面是靜態 SVG，指針整組繞中心旋轉 `spin_tilt.degrees`。
 與 `baseball-spin` 的 3D 轉軸指針是同一份資料的兩種呈現，可在 `/clock-demo` 並排對照。
@@ -30,16 +28,13 @@
 
 ### 兩種指針樣式（`pointer` prop）
 
-| 值 | 樣式 | 來源 | 畫法 |
-|----|------|------|------|
-| `chevron`（預設） | 5 個 V 形沿軸排列 | internal-project-c @ main | `polyline` ×5，`stroke-width=6`、`fill=none` |
-| `arrow` | 單一實心箭頭 | internal-project-a @ `feature/#23-spin-tilt-clock` | `line` + `polygon` 箭頭，另加 drop-shadow |
+| 值 | 樣式 | 畫法 |
+|----|------|------|
+| `chevron`（預設） | 5 個 V 形沿軸排列 | `polyline` ×5，`stroke-width=6`、`fill=none` |
+| `arrow` | 單一實心箭頭 | `line` + `polygon` 箭頭，另加 drop-shadow |
 
 兩者盤面幾何完全相同，只差指針畫法；chevron 較能看出「軸」的走向，arrow 指向較明確。
 `/clock-demo` 兩種並排、展示頁可即時切換。
-
-project-c 原版在 rotate 後另有 `translate(5 5) scale(0.95)`，那是為了讓出空間給同頁的九宮格，
-獨立模組沒有這個限制，故未沿用。
 
 ## 指針怎麼運轉
 
@@ -104,7 +99,7 @@ spin_tilt.hhmm    = "01:47"                   ← 標籤顯示的值
 兩件搬用時要知道的事：
 
 1. **`degrees` 比自己的 `hhmm` 多約 180°** —— 直接 `rotate(degrees)` 時，箭頭指的是標籤時刻的**對側**。
-   轉軸本身是一條雙向的線，兩端都成立；這是 internal-project-a 的既有行為，搬入時原樣保留、未改數學。
+   轉軸本身是一條雙向的線，兩端都成立；這是既有行為，原樣保留、未改數學。
    若要讓箭頭與標籤同側，在呼叫端傳 `degrees - 180` 即可，不需改元件。
 2. **後端的 `degrees` 未正規化到 0–360** —— 本批樣本出現 `442.15` 與 `-7.85`。
    SVG `rotate()` 吃任意角度，所以呈現無誤；但若要拿這個值做比較或分類，記得先取模。

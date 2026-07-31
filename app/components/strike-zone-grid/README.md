@@ -1,7 +1,6 @@
 # BT3D 落點圖(`/bt3d-demo`)
 
-> 搬入自 `internal-template` @ `feature/strike-zone` 的 `doc/bt3d.md`,已依本 repo 結構改寫路徑。
-> 與來源的差異:25 球資料合併成單一 `pitches.json` 靜態檔(不再用 build-time glob)。
+> 25 球資料合併成單一 `pitches.json` 靜態檔(不用 build-time glob)。
 
 2D 好球帶九宮格落點圖:列出所有投球,點選任一球後在捕手視角的好球帶框中顯示落點,並判定好球/壞球。
 

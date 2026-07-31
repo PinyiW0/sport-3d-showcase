@@ -16,6 +16,8 @@ import { SPORT_LABEL, STATUS_LABEL } from '~/modules/types'
 // Sport-3D 模組展示索引。新增模組往 app/modules/registry.ts 補一筆 ModuleSpec 即可。
 // 顯式 import：auto-import 會把 components/common/ 下的元件註冊成 CommonBorderGlow
 
+const asset = useAssetUrl()
+
 // hero 的光只在深色主題掛：白光在白底上發不出來，淺色主題跑這個 WebGL context 是純浪費
 const colorMode = useColorMode()
 
@@ -205,7 +207,7 @@ function resetPreview(event: MouseEvent) {
           <ClientOnly>
             <div class="absolute -inset-x-8 -top-8 -bottom-10">
               <ModelViewer
-                url="/models/baseball_detail.glb"
+                :url="asset('/models/baseball_detail.glb')"
                 width="100%"
                 height="100%"
                 environment-preset="none"
@@ -279,7 +281,7 @@ function resetPreview(event: MouseEvent) {
               <template v-if="cardSize(m) === 'large'">
                 <div class="min-h-0 flex-1 overflow-hidden bg-neutral-100 ring-1 ring-neutral-200 dark:bg-neutral-800 dark:ring-neutral-700">
                   <img
-                    :src="`/previews/${m.slug}.jpg`"
+                    :src="asset(`/previews/${m.slug}.jpg`)"
                     :alt="`${m.title} 呈現縮圖`"
                     class="size-full object-cover"
                     loading="lazy"
@@ -300,13 +302,13 @@ function resetPreview(event: MouseEvent) {
               <template v-else-if="cardSize(m) === 'tall'">
                 <div class="relative aspect-16/10 overflow-hidden bg-neutral-100 ring-1 ring-neutral-200 dark:bg-neutral-800 dark:ring-neutral-700">
                   <img
-                    :src="`/previews/${m.slug}.jpg`"
+                    :src="asset(`/previews/${m.slug}.jpg`)"
                     :alt="`${m.title} 呈現縮圖`"
                     class="size-full object-cover"
                     loading="lazy"
                   >
                   <video
-                    :src="`/previews/${m.slug}.webm`"
+                    :src="asset(`/previews/${m.slug}.webm`)"
                     :aria-label="`${m.title} 呈現預覽`"
                     class="absolute inset-0 size-full object-cover opacity-0 transition-opacity duration-250 group-hover:opacity-100"
                     muted
@@ -339,7 +341,7 @@ function resetPreview(event: MouseEvent) {
                   <!-- self-start 不可少：flex 預設 stretch 會把容器拉到與文字等高，aspect-ratio 就失效了 -->
                   <div class="aspect-16/10 w-24 shrink-0 self-start overflow-hidden bg-neutral-100 ring-1 ring-neutral-200 dark:bg-neutral-800 dark:ring-neutral-700">
                     <img
-                      :src="`/previews/${m.slug}.jpg`"
+                      :src="asset(`/previews/${m.slug}.jpg`)"
                       :alt="`${m.title} 呈現縮圖`"
                       class="size-full object-cover"
                       loading="lazy"
@@ -386,8 +388,8 @@ function resetPreview(event: MouseEvent) {
               class="pointer-events-none absolute inset-2 overflow-hidden opacity-0 transition-opacity duration-250 group-hover:opacity-100"
             >
               <video
-                :src="`/previews/${m.slug}.webm`"
-                :poster="`/previews/${m.slug}.jpg`"
+                :src="asset(`/previews/${m.slug}.webm`)"
+                :poster="asset(`/previews/${m.slug}.jpg`)"
                 :aria-label="`${m.title} 呈現預覽`"
                 class="size-full object-cover"
                 muted
