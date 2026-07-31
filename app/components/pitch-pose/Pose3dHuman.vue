@@ -37,9 +37,25 @@ const props = withDefaults(
     /** 目前播放時間(毫秒);null 或無對應 frame 時模型定格在上一幀。 */
     timeMs: number | null
     height?: number
+    /**
+     * 深色場景。預設的近白背景放進深色版面(如索引頁的預覽卡)會突兀;
+     * 開啟後只換場景底色,打光與模型維持不變。預設 false 以維持既有呈現。
+     */
+    dark?: boolean
   }>(),
-  { height: 480 },
+  { height: 480, dark: false },
 )
+
+/**
+ * 場景底色與地板網格。深色值對齊 pitch-trajectory 的 CHART_THEME。
+ * 網格得跟著翻深——底色轉黑但網格留在近白，那片地板會變成畫面裡最亮的東西，
+ * 反而蓋過模型本身。
+ */
+const SCENE_BG = { light: 0xFAFAFA, dark: 0x000000 } as const
+const GRID_COLOR = {
+  light: { center: 0xBBBBBB, lines: 0xE2E2E2 },
+  dark: { center: 0x555555, lines: 0x333333 },
+} as const
 
 const MODEL_URL = '/models/Xbot.glb'
 
@@ -101,7 +117,8 @@ function frameScene() {
   controls.update()
 
   const gridSize = Math.ceil(Math.max(size.x, size.z)) + 4
-  const grid = new GridHelper(gridSize, gridSize * 2, 0xBBBBBB, 0xE2E2E2)
+  const gridColor = props.dark ? GRID_COLOR.dark : GRID_COLOR.light
+  const grid = new GridHelper(gridSize, gridSize * 2, gridColor.center, gridColor.lines)
   grid.position.set(center.x, 0, center.z)
   scene.add(grid)
 }
@@ -133,7 +150,7 @@ onMounted(async () => {
   host.appendChild(renderer.domElement)
 
   scene = new Scene()
-  scene.background = new Color(0xFAFAFA)
+  scene.background = new Color(props.dark ? SCENE_BG.dark : SCENE_BG.light)
   scene.add(new HemisphereLight(0xFFFFFF, 0x8D8D9A, 2.6))
   const sun = new DirectionalLight(0xFFFFFF, 2)
   sun.position.set(3, 8, 5)

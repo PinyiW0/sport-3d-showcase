@@ -21,12 +21,27 @@ const props = withDefaults(
     height?: number
     /** 骨架顏色。 */
     color?: string
+    /**
+     * 深色畫布。Plotly 預設是白底配深色軸,放進深色版面(如索引頁的預覽卡)會突兀;
+     * 開啟後底色與軸文字一起翻深,不影響骨架配色。預設 false 以維持既有呈現。
+     */
+    dark?: boolean
   }>(),
   {
     height: 480,
     color: '#22c55e',
+    dark: false,
   },
 )
+
+/** 深色畫布的配色,對齊 pitch-trajectory 的 CHART_THEME */
+const DARK_THEME = {
+  paper: '#000000',
+  plot: '#181818',
+  axisBackground: '#1a1a1a',
+  axisText: '#ffffff',
+  grid: '#444444',
+} as const
 
 const chartRef = ref<HTMLDivElement | null>(null)
 let plotly: typeof import('plotly.js-dist-min') | null = null
@@ -153,19 +168,34 @@ function liveCamera() {
 
 function buildLayout() {
   const { range, aspect } = space.value
+  // 深色時軸面、格線與文字一起翻深;淺色維持 Plotly 預設(不傳值)
+  const axis = (title: string, axisRange: readonly number[]) => ({
+    title: { text: title },
+    range: axisRange,
+    ...(props.dark
+      ? {
+          backgroundcolor: DARK_THEME.axisBackground,
+          showbackground: true,
+          gridcolor: DARK_THEME.grid,
+          zerolinecolor: DARK_THEME.grid,
+          color: DARK_THEME.axisText,
+        }
+      : {}),
+  })
   return {
     height: props.height,
     margin: { l: 0, r: 0, t: 0, b: 0 },
     showlegend: false,
+    ...(props.dark ? { paper_bgcolor: DARK_THEME.paper, plot_bgcolor: DARK_THEME.plot } : {}),
     // 固定值 → Plotly.react 重畫時保留使用者旋轉 / 縮放的視角
     uirevision: 'pose3d-skeleton',
     scene: {
       // manual + 固定 aspectratio:空間比例由整段動作決定,不隨當下 frame 適配
       aspectmode: 'manual',
       aspectratio: aspect,
-      xaxis: { title: { text: 'x (cm)' }, range: range.x },
-      yaxis: { title: { text: 'y (cm)' }, range: range.y },
-      zaxis: { title: { text: 'z (cm)' }, range: range.z },
+      xaxis: axis('x (cm)', range.x),
+      yaxis: axis('y (cm)', range.y),
+      zaxis: axis('z (cm)', range.z),
       // 初次渲染用預設視角(三壘側斜上方,距離隨場景大小等比縮放),
       // 之後一律沿用使用者當下的視角
       camera: liveCamera() ?? {
@@ -222,7 +252,7 @@ onMounted(async () => {
   await render()
 })
 
-watch(() => [props.timeMs, props.frames, props.color], render)
+watch(() => [props.timeMs, props.frames, props.color, props.dark], render)
 
 onBeforeUnmount(() => {
   chartRef.value?.removeEventListener('pointerdown', onPointerDown)

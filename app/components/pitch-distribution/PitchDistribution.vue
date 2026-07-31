@@ -110,17 +110,16 @@ const countFontSize = computed(() => scale.value.zoneRect.height / 3 * 0.28)
 
     <!-- 落點：好球與壞球各一條 path，點數再多都只有兩個節點 -->
     <g v-if="showPoints" data-testid="distribution-points">
-      <!-- 壞球畫得比好球淡：框外的球散得開、視覺面積大，同樣濃度會蓋過好球帶 -->
+      <!-- 壞球畫得比好球淡：框外的球散得開、視覺面積大，同樣濃度會蓋過好球帶。
+           深色底要另外加濃並換上較亮的色階——同一組 opacity 疊在黑底上會暗到看不見。 -->
       <path
         :d="ballPath"
-        class="fill-error-400"
-        fill-opacity="0.22"
+        class="fill-error-400 [fill-opacity:0.22] dark:[fill-opacity:0.45]"
         data-testid="distribution-balls"
       />
       <path
         :d="strikePath"
-        class="fill-primary-700"
-        fill-opacity="0.42"
+        class="fill-primary-700 [fill-opacity:0.42] dark:fill-primary-400 dark:[fill-opacity:0.5]"
         data-testid="distribution-strikes"
       />
     </g>
