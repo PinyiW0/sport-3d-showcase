@@ -4,8 +4,11 @@
  *
  * 用法（需要先啟動 dev server）：
  *   npm run dev
- *   npm run capture:previews                      # 預設打 http://localhost:3000
+ *   npm run capture:previews                      # 全部重錄，預設打 http://localhost:3000
+ *   npm run capture:previews -- strike-zone-grid  # 只錄指定模組（可給多個）
  *   PREVIEW_BASE_URL=http://localhost:3004 npm run capture:previews
+ *
+ * 只改了一個模組時務必指定 slug——全部重錄會讓其他模組的 webm 產生無謂的 diff。
  *
  * 錄的是 /preview/[slug]（只渲染呈現本體、不含控制列），錄完用 ffmpeg 裁掉載入片頭。
  * 新增模組時，先讓該 slug 在 preview 頁渲染得出來，再把 slug 加進下面的 MODULES。
@@ -30,8 +33,12 @@ const SIZE = { width: 480, height: 300 }
 
 /** 每段錄影長度（毫秒）。bt3d 輪播 500ms/球，4 秒約看到 8 球。 */
 const RECORD_MS = 4000
-/** 內容就緒後、開始錄之前的緩衝：讓 3D 場景把第一幀畫穩。 */
-const SETTLE_MS = 800
+/**
+ * 內容就緒後、開始錄之前的緩衝：讓 3D 場景把第一幀畫穩。
+ * 1600 而非 800——ready 只表示資料到手，SwiftShader 軟體渲染下 Plotly 的
+ * gl3d 還要再畫上一秒，太早截圖會拍到全空的畫布。
+ */
+const SETTLE_MS = 1600
 
 const MODULES = [
   'baseball-spin',
@@ -40,6 +47,7 @@ const MODULES = [
   'pitch-pose-human',
   'pitch-trajectory',
   'strike-zone-grid',
+  'pitch-distribution',
 ]
 
 /**
@@ -137,13 +145,21 @@ async function trimHead(input, output, startSec) {
 }
 
 async function main() {
+  const requested = process.argv.slice(2)
+  const unknown = requested.filter(slug => !MODULES.includes(slug))
+  if (unknown.length) {
+    // 打錯 slug 要噴錯,不能靜默跳過——否則會以為錄好了
+    throw new Error(`未知的模組：${unknown.join('、')}\n可用：${MODULES.join('、')}`)
+  }
+  const targets = requested.length ? requested : MODULES
+
   await mkdir(OUT_DIR, { recursive: true })
   await rm(TMP_DIR, { recursive: true, force: true })
   await mkdir(TMP_DIR, { recursive: true })
 
   const browser = await chromium.launch({ args: WEBGL_ARGS })
   try {
-    for (const slug of MODULES) {
+    for (const slug of targets) {
       process.stdout.write(`錄製 ${slug} … `)
       const { trimmedSec } = await capture(browser, slug)
       console.log(`完成（裁掉 ${trimmedSec}s 片頭）`)
