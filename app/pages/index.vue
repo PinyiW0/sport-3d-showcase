@@ -56,12 +56,20 @@ const visibleModules = computed(() =>
 
 // Bento 錯落排版：尺寸看模組本身的份量，不看它排第幾張——
 // 否則篩選一切換，同一個模組的大小就會跳動。空出來的洞交給 grid-flow-dense 補。
-type CardSize = 'large' | 'wide' | 'small'
+type CardSize = 'large' | 'wide' | 'tall' | 'small'
+
+/** 說明超過這個字數就吃寬卡：窄卡塞不下長說明，會被 line-clamp 砍成沒頭沒尾 */
+const WIDE_SUMMARY_CHARS = 100
 
 function cardSize(m: ModuleSpec): CardSize {
   if (!m.presentation)
     return 'small' // 規劃中，只有文字輪廓
-  return m.status === 'done' ? 'large' : 'wide'
+  if (m.status === 'done')
+    return 'large'
+  // 進行中的模組依說明長度分寬卡／直立卡。這是版面錯落的來源——全給 wide 的話
+  // 九張卡有七張同寬，bento 就退化成規整的兩欄。
+  // 副作用要知道：改 summary 文案可能讓卡片換形狀，這是刻意的，卡片寬度本就該配合內容量。
+  return m.summary.length > WIDE_SUMMARY_CHARS ? 'wide' : 'tall'
 }
 
 // span 一律從 sm: 起跳：手機是單欄，col-span-2 會逼 grid 長出隱式第二欄
@@ -70,6 +78,7 @@ function cardSize(m: ModuleSpec): CardSize {
 const spanClass: Record<CardSize, string> = {
   large: 'sm:col-span-2 sm:row-span-2',
   wide: 'sm:col-span-2',
+  tall: 'sm:row-span-2',
   small: '',
 }
 
@@ -255,7 +264,7 @@ function resetPreview(event: MouseEvent) {
                min-h-0 讓大卡的縮圖能靠 flex-1 吃掉剩餘高度而不撐破卡片 -->
             <div
               class="flex min-h-0 flex-1 flex-col"
-              :class="m.presentation ? 'transition-opacity duration-250 group-hover:opacity-0' : ''"
+              :class="m.presentation && cardSize(m) !== 'tall' ? 'transition-opacity duration-250 group-hover:opacity-0' : ''"
             >
               <div class="mb-3 flex items-center justify-between">
                 <span :class="statusClass[m.status]" class="px-2.5 py-0.5 text-xs font-medium">
@@ -282,6 +291,46 @@ function resetPreview(event: MouseEvent) {
                 <p class="mt-1.5 line-clamp-2 text-sm text-neutral-500 dark:text-neutral-400">
                   {{ m.summary }}
                 </p>
+              </template>
+
+              <!-- 直立格：與大格同構（圖上文下），但只有一欄寬。
+                 影片播在縮圖框內而不是鋪滿整張卡——窄高卡整張鋪的話，16:10 的影片
+                 以高度對齊會把左右裁掉約三分之二，等於看不到內容。
+                 文字因此不淡出，hover 時只有縮圖換成影片。 -->
+              <template v-else-if="cardSize(m) === 'tall'">
+                <div class="relative aspect-16/10 overflow-hidden bg-neutral-100 ring-1 ring-neutral-200 dark:bg-neutral-800 dark:ring-neutral-700">
+                  <img
+                    :src="`/previews/${m.slug}.jpg`"
+                    :alt="`${m.title} 呈現縮圖`"
+                    class="size-full object-cover"
+                    loading="lazy"
+                  >
+                  <video
+                    :src="`/previews/${m.slug}.webm`"
+                    :aria-label="`${m.title} 呈現預覽`"
+                    class="absolute inset-0 size-full object-cover opacity-0 transition-opacity duration-250 group-hover:opacity-100"
+                    muted
+                    loop
+                    playsinline
+                    preload="none"
+                  />
+                </div>
+                <!-- 文字不淡出，所以得自己扛 hover 的深色底：其他卡是整層 opacity-0
+                   淡掉才不必處理對比，這裡留著文字就要跟著提亮，否則深底配深字等於看不見 -->
+                <h2 class="mt-3 text-lg font-semibold group-hover:text-white group-hover:underline">
+                  {{ m.title }}
+                </h2>
+                <p class="mt-1.5 line-clamp-3 text-sm text-neutral-500 group-hover:text-neutral-300 dark:text-neutral-400 dark:group-hover:text-neutral-300">
+                  {{ m.summary }}
+                </p>
+                <!-- mt-auto 把 tags 壓到卡底，免得直立卡中段留一片空白 -->
+                <div class="mt-auto flex flex-wrap gap-1.5 pt-3">
+                  <span
+                    v-for="tag in m.tags"
+                    :key="tag"
+                    class="bg-neutral-100 px-1.5 py-0.5 text-xs text-neutral-600 group-hover:bg-neutral-800 group-hover:text-neutral-300 dark:bg-neutral-800 dark:text-neutral-300"
+                  >{{ tag }}</span>
+                </div>
               </template>
 
               <!-- 寬格：縮圖在左的橫排。overflow-hidden 讓超出的說明被裁掉而不是壓到下方 tags -->
@@ -333,7 +382,7 @@ function resetPreview(event: MouseEvent) {
              object-cover 而非 contain——影片是 16:10、卡片較扁，contain 會留下左右空白，
              而各模組影片底色不一（軌跡圖與轉軸為黑底、其餘白底），單一背景色補不平。 -->
             <div
-              v-if="m.presentation"
+              v-if="m.presentation && cardSize(m) !== 'tall'"
               class="pointer-events-none absolute inset-2 overflow-hidden opacity-0 transition-opacity duration-250 group-hover:opacity-100"
             >
               <video
