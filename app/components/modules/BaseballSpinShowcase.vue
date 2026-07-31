@@ -8,9 +8,11 @@ import { parseSpinResult } from '~/components/baseball-spin/core/types'
 const sampleIds = ['sample1', 'sample2', 'sample3']
 const selected = ref('sample1')
 
+const asset = useAssetUrl()
+
 // server: false — public/ 靜態檔在 dev SSR 的 nitro 內部 fetch 拿不到（404），只在 client 抓
 const { data: spinData, error } = useFetch(
-  () => `/samples/spin/${selected.value}/result.json`,
+  () => asset(`/samples/spin/${selected.value}/result.json`),
   { server: false, transform: json => parseSpinResult(json) },
 )
 
@@ -56,6 +58,7 @@ const metrics = computed(() => {
       <BaseballSpinViewer
         ref="viewerRef"
         :data="spinData ?? null"
+        :model-url="asset('/models/baseball_detail.glb')"
         :speed="speed"
         :show-axis-arrow="showArrow"
       />

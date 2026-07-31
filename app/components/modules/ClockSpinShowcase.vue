@@ -12,14 +12,16 @@ const selected = ref('sample1')
 
 // 兩種指針樣式並存，來源不同專案，留著讓人挑
 const pointerOptions: { label: string, value: PointerStyle }[] = [
-  { label: 'V 形（project-c）', value: 'chevron' },
-  { label: '箭頭（project-a）', value: 'arrow' },
+  { label: 'V 形', value: 'chevron' },
+  { label: '箭頭', value: 'arrow' },
 ]
 const pointer = ref<PointerStyle>('chevron')
 
+const asset = useAssetUrl()
+
 // server: false — public/ 靜態檔在 dev SSR 的 nitro 內部 fetch 拿不到（404），只在 client 抓
 const { data: spinData, error } = useFetch(
-  () => `/samples/spin/${selected.value}/result.json`,
+  () => asset(`/samples/spin/${selected.value}/result.json`),
   { server: false, transform: json => parseSpinResult(json) },
 )
 

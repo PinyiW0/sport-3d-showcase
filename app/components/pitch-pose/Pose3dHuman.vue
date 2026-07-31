@@ -42,8 +42,10 @@ const props = withDefaults(
      * 開啟後只換場景底色,打光與模型維持不變。預設 false 以維持既有呈現。
      */
     dark?: boolean
+    /** Mixamo 角色模型位置。宿主部署在子路徑時要自行接上 baseURL。 */
+    modelUrl?: string
   }>(),
-  { height: 480, dark: false },
+  { height: 480, dark: false, modelUrl: '/models/Xbot.glb' },
 )
 
 /**
@@ -56,8 +58,6 @@ const GRID_COLOR = {
   light: { center: 0xBBBBBB, lines: 0xE2E2E2 },
   dark: { center: 0x555555, lines: 0x333333 },
 } as const
-
-const MODEL_URL = '/models/Xbot.glb'
 
 const hostRef = ref<HTMLDivElement | null>(null)
 const loading = ref(true)
@@ -168,7 +168,7 @@ onMounted(async () => {
   rafHandle = requestAnimationFrame(renderLoop)
 
   try {
-    const gltf = await new GLTFLoader().loadAsync(MODEL_URL)
+    const gltf = await new GLTFLoader().loadAsync(props.modelUrl)
     // 投球位移大,骨架動畫下 bounding sphere 不可靠,關掉視錐剔除避免模型消失
     gltf.scene.traverse((node) => {
       if ('isSkinnedMesh' in node && node.isSkinnedMesh)

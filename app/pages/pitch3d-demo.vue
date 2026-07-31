@@ -62,7 +62,7 @@ const zoomOptions = [
       </ul>
 
       <div class="flex flex-col gap-2">
-        <!-- 圖表為暗色主題（沿用 project-b 鷹眼系統配色），容器同步壓深避免黑圖貼白框 -->
+        <!-- 圖表為暗色主題，容器同步壓深避免黑圖貼白框 -->
         <div class="overflow-x-auto bg-neutral-950 p-4">
           <PitchTrajectoryChart
             :trajectory="trajectory"

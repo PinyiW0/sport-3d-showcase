@@ -7,6 +7,7 @@ import { parsePitchOutcome } from '~/components/pitch-pose/core/parsePitchOutcom
 export const POSE3D_RATES = [0.05, 0.1, 0.25, 0.5, 1]
 
 export function usePose3dClip() {
+  const asset = useAssetUrl()
   const pitch = shallowRef<PitchPose3d | null>(null)
   const loadError = ref<string | null>(null)
 
@@ -30,7 +31,7 @@ export function usePose3dClip() {
     rafHandle = requestAnimationFrame(tick)
     try {
       // client-side fetch：public/ 靜態檔在 dev SSR 的 nitro 內部 fetch 拿不到
-      const raw = await $fetch<RawPitchOutcome>('/samples/pose3d/outcome.json')
+      const raw = await $fetch<RawPitchOutcome>(asset('/samples/pose3d/outcome.json'))
       pitch.value = parsePitchOutcome(raw)
       playing.value = true
     }

@@ -10,8 +10,10 @@ import SpinTiltClock from '~/components/clock-spin/SpinTiltClock.vue'
 const sampleIds = ['sample1', 'sample2', 'sample3']
 const selected = ref('sample1')
 
+const asset = useAssetUrl()
+
 const { data: spinData, error } = useFetch(
-  () => `/samples/spin/${selected.value}/result.json`,
+  () => asset(`/samples/spin/${selected.value}/result.json`),
   { server: false, transform: json => parseSpinResult(json) },
 )
 
@@ -38,8 +40,8 @@ const metrics = computed(() => {
           時鐘轉軸驗證
         </h1>
         <p class="mt-1 text-sm text-neutral-500">
-          同一顆球的三種轉軸呈現並排對照：兩種 2D 指針樣式（分別取自 internal-project-c 與 internal-project-a，
-          盤面幾何相同、只差畫法），以及 3D 檢視器依姿態矩陣旋轉的實體指針。
+          同一顆球的三種轉軸呈現並排對照：兩種 2D 指針樣式（盤面幾何相同、只差畫法），
+          以及 3D 檢視器依姿態矩陣旋轉的實體指針。
         </p>
       </div>
       <UTabs
@@ -59,7 +61,7 @@ const metrics = computed(() => {
     <div class="grid grid-cols-1 gap-6 sm:grid-cols-3">
       <div class="space-y-2">
         <h2 class="text-sm font-medium opacity-70">
-          V 形指針（internal-project-c）
+          V 形指針
         </h2>
         <div class="border border-neutral-200 p-4 dark:border-neutral-700">
           <SpinTiltClock
@@ -73,7 +75,7 @@ const metrics = computed(() => {
 
       <div class="space-y-2">
         <h2 class="text-sm font-medium opacity-70">
-          箭頭指針（internal-project-a）
+          箭頭指針
         </h2>
         <div class="border border-neutral-200 p-4 dark:border-neutral-700">
           <SpinTiltClock
@@ -92,6 +94,7 @@ const metrics = computed(() => {
         <div class="overflow-hidden bg-black">
           <BaseballSpinViewer
             :data="spinData ?? null"
+            :model-url="asset('/models/baseball_detail.glb')"
             :speed="1 / 60"
             :show-axis-arrow="true"
           />
@@ -113,7 +116,7 @@ const metrics = computed(() => {
     <p v-if="tilt && dir" class="text-xs text-neutral-400">
       三個樣本實測：spin_tilt 與 spin_dir 的時鐘標籤固定差 3 小時（degrees 差 90°）；
       而 spin_tilt.degrees 比自己 hhmm 對應的盤面角度多約 180°，
-      所以指針箭頭指的是標籤的對側（沿用 internal-project-a 既有行為，未改動數學）。
+      所以指針箭頭指的是標籤的對側（沿用既有行為，未改動數學）。
       後端的 degrees 未正規化到 0–360（本批樣本出現 442.15° 與 −7.85°），SVG rotate 可直接吃。
     </p>
   </div>

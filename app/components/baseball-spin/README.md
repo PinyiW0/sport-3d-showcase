@@ -1,6 +1,6 @@
 # baseball-spin — 3D 棒球旋轉視覺化模組
 
-吃演算法後端（algo-backend）的 `result.json`，用 three.js 重現該球的真實旋轉（含縫線樣貌），並疊上依 `spin_tilt.degrees` 旋轉的指針箭頭。
+吃演算法後端的 `result.json`，用 three.js 重現該球的真實旋轉（含縫線樣貌），並疊上依 `spin_tilt.degrees` 旋轉的指針箭頭。
 
 ## 跨專案搬移
 
@@ -30,7 +30,7 @@
 - emits：`ready` / `error` / `progress(loaded, total)`；expose：`play()` / `pause()`
 - 載入 UI 可用 `#loading` slot 客製（slot props：`percent`）
 
-## 數學慣例（來源：algo-backend `docs/result_json_format.md`）
+## 數學慣例（來源：演算法後端 `result_json_format.md`）
 
 - 姿態：`R(θ) = Rodrigues(axis·sign(omega)·θ) · R_ref`（左乘，相機系）
 - 相機：正交、位於 `[0,0,3]` 看向原點、up=+Y、halfExtent 1.5（= 後端 xmag）
@@ -38,7 +38,7 @@
 - 轉軸指針：場景內的 3D 黃箭頭（圓柱＋圓錐，同後端 `set_rotation_axis`：全長 4 個球半徑、桿半徑 0.035、單頭）——
   沿帶號自轉軸 `axis·sign(omega)` 擺放、固定在相機系（球轉軸不轉），遮蔽與立體感由深度緩衝自然呈現。
   補充：軸投影方向與 spin_tilt 的關係為「投影角 ≡ 90° − spin_tilt.degrees」；
-  若要做 internal-project-a 那種 2D 時鐘面板（數據視覺化），直接 `rotate(spin_tilt.degrees)` 即可，兩者是不同的呈現。
+  若要做 2D 時鐘面板那種呈現（數據視覺化），直接 `rotate(spin_tilt.degrees)` 即可，兩者是不同的呈現。
 
 ## 三視角擴充點（未實作）
 

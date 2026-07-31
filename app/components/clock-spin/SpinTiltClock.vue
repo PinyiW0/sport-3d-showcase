@@ -16,8 +16,8 @@ const props = withDefaults(defineProps<{
   label?: string
   /**
    * 指針樣式：
-   * - `chevron`：5 個 V 形沿軸排列（internal-project-c）
-   * - `arrow`：單一實心箭頭加陰影（internal-project-a）
+   * - `chevron`：5 個 V 形沿軸排列
+   * - `arrow`：單一實心箭頭加陰影
    */
   pointer?: PointerStyle
 }>(), {
@@ -74,7 +74,7 @@ const rotation = computed(() => `rotate(${props.degrees} 100 100)`)
       </g>
 
       <!-- 轉軸指針：整組繞中心旋轉 spin_tilt.degrees。兩種樣式同幾何、僅畫法不同。 -->
-      <!-- chevron（internal-project-c）：多個 V 形沿軸排列，看得出「軸」的走向 -->
+      <!-- chevron：多個 V 形沿軸排列，看得出「軸」的走向 -->
       <g v-if="pointer === 'chevron'" :transform="rotation" data-testid="spin-tilt-arrow">
         <polyline
           v-for="cy in CHEVRON_POSITIONS"
@@ -87,7 +87,7 @@ const rotation = computed(() => `rotate(${props.degrees} 100 100)`)
         />
       </g>
 
-      <!-- arrow（internal-project-a）：單一實心箭頭，指向明確 -->
+      <!-- arrow：單一實心箭頭，指向明確 -->
       <g
         v-else
         :transform="rotation"

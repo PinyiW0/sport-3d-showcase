@@ -2,7 +2,7 @@ import type { Mat3, SpinAnimation, Vec3 } from './types'
 import { Matrix4, Quaternion, Vector3 } from 'three'
 
 // 姿態數學（只用 three 的數學類別，無 WebGL，可在 node/vitest 執行）。
-// 慣例來源 algo-backend docs/result_json_format.md：
+// 慣例來源 演算法後端 result_json_format.md：
 //   R(θ) = Rodrigues(axis·sign(omega)·θ) · R_ref（左乘，axis 為相機系向量）
 
 // row-major 3×3 → three Quaternion。

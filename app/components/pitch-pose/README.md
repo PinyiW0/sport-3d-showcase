@@ -1,7 +1,6 @@
 # 3D 投球骨架動態圖(`/pose3d-demo`)
 
-> 搬入自 `internal-template` @ `feature/strike-zone` 的 `doc/pose3d.md`,已依本 repo 結構改寫路徑。
-> 與來源的差異:資料改讀 `public/samples/` 靜態檔(不需 server route)、樣本已精簡、2D 疊圖變體未搬入。
+> 資料讀 `public/samples/` 靜態檔(不需 server route)、樣本已精簡、無 2D 疊圖變體。
 
 投手投球動作的 3D 骨架逐幀播放:讀取 `outcome.json` 的多鏡位 3D 重建結果(COCO-17 keypoints、250fps、約 3 秒),以 Plotly 3D 渲染骨架,支援播放/暫停、慢速(預設 0.25×)、拖曳進度條、跳到出手瞬間,並保留使用者拖曳的視角。另有 three.js 真人模型版(`Pose3dHuman.vue`),把同一份 keypoints retarget 到人形骨架上。
 

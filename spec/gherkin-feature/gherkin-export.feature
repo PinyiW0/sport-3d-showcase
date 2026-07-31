@@ -2223,7 +2223,7 @@ Feature: 接收 bt3d 軌跡資料
       Then the operation fails with: 練習已結束
 
 Feature: 接收 bsa 旋轉資料
-  algo-backend 擷取的旋轉原始資料轉譯為內部事件（由 BsaTranslator 觸發）
+  演算法後端擷取的旋轉原始資料轉譯為內部事件（由 BsaTranslator 觸發）
 
   @happy-path @happy-path
   Rule: 成功接收 bsa 資料

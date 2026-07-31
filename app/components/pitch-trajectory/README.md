@@ -1,7 +1,6 @@
 # BT3D 軌跡圖(`/pitch3d-demo`)
 
-> 搬入自 `internal-template` @ `feature/strike-zone` 的 `doc/pitch3d.md`,已依本 repo 結構改寫路徑。
-> 與來源的差異:25 球資料合併成單一 `pitches.json` 靜態檔(不再用 build-time glob)。
+> 25 球資料合併成單一 `pitches.json` 靜態檔(不用 build-time glob)。
 
 3D 投球軌跡圖:列出所有投球,點選任一球後以 Plotly 3D 場景顯示該球軌跡、出手點、入壘點、本壘板與好球帶九宮格,可拖曳旋轉視角。
 
@@ -85,9 +84,9 @@ Plotly.js(`plotly.js-dist-min`,`onMounted` 時動態 `import()`),trace 組成:
 
 ### 配色
 
-暗色主題取自 `internal-project-b`(內部系統)的 `BaseballChart.vue`:純黑畫布(`#000000`)、繪圖區 `#181818`、軸面 x/z `#1a1a1a` 與 y `#282828`(進壘深度稍亮以區分前後)、白色軸文字配 `#444` 格線。
+暗色主題:純黑畫布(`#000000`)、繪圖區 `#181818`、軸面 x/z `#1a1a1a` 與 y `#282828`(進壘深度稍亮以區分前後)、白色軸文字配 `#444` 格線。
 
-整組色值集中在 `usePitch3d.ts` 的 `CHART_THEME` 常數,換主題只需改這裡。軸範圍與 aspect 仍為動態計算(project-b 原版是寫死的 `x[-200,200] / y[-100,700] / z[0,200]`,換不同長度的軌跡會被裁切)。
+整組色值集中在 `usePitch3d.ts` 的 `CHART_THEME` 常數,換主題只需改這裡。軸範圍與 aspect 為動態計算(而非寫死的固定範圍,那樣換不同長度的軌跡會被裁切)。
 
 ## 資料來源需要的欄位
 

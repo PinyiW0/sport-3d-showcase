@@ -37,7 +37,7 @@ const HOME_PLATE_TOP: Point3D[] = HOME_PLATE_POINTS.map(([x, y]) => [x, y, 0] as
 const CM_PER_ASPECT_UNIT = 200
 
 /**
- * 配色:沿用 internal-project-b(內部系統)的暗色主題——
+ * 配色:暗色主題——
  * 純黑畫布配琥珀黃軌跡,深紅入壘點,白色九宮格與軸線。
  * 改主題只需動這一組常數。
  */
