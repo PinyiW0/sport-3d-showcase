@@ -20,22 +20,46 @@ import { usePose3dClip } from '~/composables/usePose3dClip'
 // 供 scripts/capture-previews.mjs 用 Playwright 錄成卡片 hover 用的 webm。
 // viewport 由腳本設成 PREVIEW_SIZE，頁面填滿即可。
 
-const PREVIEW_WIDTH = 480
-const PREVIEW_HEIGHT = 300
+/** 基準畫布尺寸（16:10，對齊索引頁卡片的 aspect-16/10）。 */
+const BASE_WIDTH = 480
+const BASE_HEIGHT = 300
 /** 球的呈現尺寸（正方形）；小於畫布高度，四周留黑邊 */
-const SPIN_SIZE = 230
+const BASE_SPIN_SIZE = 230
 /** 時鐘盤面尺寸；含上方標籤列，抓略小於畫布高度 */
-const CLOCK_SIZE = 250
+const BASE_CLOCK_SIZE = 250
 /**
  * 九宮格的呈現寬度。以寬度而非高度為準是刻意的：StrikeZone 的 viewWidth
  * 恆為 129.54（本壘板寬固定），viewHeight 才隨級別變，所以固定寬度時
  * 框寬在畫面上恆定、只有高度變——這才是好球帶真正的行為。
  * 284 = 300 × 129.54 / 136.74，讓最高的成棒框剛好塞滿畫布高度不被裁。
  */
-const SZ_WIDTH = 284
+const BASE_SZ_WIDTH = 284
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug))
+
+/**
+ * 畫布放大倍率，由 `?scale=2` 帶入（錄製腳本使用）。
+ *
+ * 走 CSS `zoom` 而不是把尺寸常數乘上去：3D 元件的線寬與標記大小是**像素單位**
+ * （骨架線 6px、軌跡線 2px），畫布直接開成 2 倍的話這些線相對畫面會細一半。
+ * `zoom` 讓元素的 `clientWidth` 維持 480，元件算出來的比例不變，但瀏覽器以
+ * 2 倍畫素渲染——配合錄製端的 deviceScaleFactor，canvas buffer 也跟著加倍。
+ *
+ * 也不能只在錄製端用 deviceScaleFactor：Playwright 的 `recordVideo.size` 只會把
+ * 畫面**縮小**塞進指定尺寸、不會放大，viewport 沒放大就會錄出「畫面在左上角、
+ * 其餘補灰」的結果。
+ */
+const scale = computed(() => {
+  const value = Number(route.query.scale)
+  return Number.isFinite(value) && value > 0 ? value : 1
+})
+
+const PREVIEW_WIDTH = BASE_WIDTH
+const PREVIEW_HEIGHT = BASE_HEIGHT
+const SPIN_SIZE = BASE_SPIN_SIZE
+const CLOCK_SIZE = BASE_CLOCK_SIZE
+const SZ_WIDTH = BASE_SZ_WIDTH
 
 const asset = useAssetUrl()
 
@@ -167,7 +191,7 @@ const ready = computed(() => {
 <template>
   <div
     class="dark flex items-center justify-center overflow-hidden bg-black"
-    :style="{ width: `${PREVIEW_WIDTH}px`, height: `${PREVIEW_HEIGHT}px` }"
+    :style="{ width: `${PREVIEW_WIDTH}px`, height: `${PREVIEW_HEIGHT}px`, zoom: scale }"
     :data-preview-ready="ready"
   >
     <!-- viewer 內部是 aspect-square，需要外層給定尺寸才撐得開；
