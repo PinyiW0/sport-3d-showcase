@@ -2,7 +2,7 @@
 
 > 資料讀 `public/samples/` 靜態檔(不需 server route)、樣本已精簡、無 2D 疊圖變體。
 
-投手投球動作的 3D 骨架逐幀播放:讀取 `outcome.json` 的多鏡位 3D 重建結果(COCO-17 keypoints、250fps、約 3 秒),以 **Three.js** 渲染骨架,支援播放/暫停、慢速(預設 0.25×)、拖曳進度條、跳到出手瞬間,播放中可自由拖曳旋轉視角。另有 three.js 真人模型版(`Pose3dHuman.vue`),把同一份 keypoints retarget 到人形骨架上;以及 Plotly 對照版(`../pitch-pose-plotly/`),用來並列比對兩種渲染器。
+投手投球動作的 3D 骨架逐幀播放:讀取 `outcome.json` 的多鏡位 3D 重建結果(COCO-17 keypoints、250fps、約 3 秒),以 **Three.js** 渲染骨架,支援播放/暫停、慢速(預設 0.25×)、拖曳進度條、跳到出手瞬間,播放中可自由拖曳旋轉視角。另有兩種「有身體」的呈現:真人模型版(`Pose3dHuman.vue`,把同一份 keypoints retarget 到 Mixamo 人形骨架)與程式生成素體版(`Pose3dCapsule.vue`,不載模型檔、keypoints 直接組幾何);兩者都可疊上骨架(`core/skeletonOverlay.ts`,可開關)看關節對應的身體部位。另有 Plotly 對照版(`../pitch-pose-plotly/`),用來並列比對兩種渲染器。
 
 ## 相關檔案
 
@@ -17,17 +17,20 @@
 
 | 檔案 | 責任 |
 |------|------|
-| `app/pages/pose3d-demo.vue` | 頁面:三種呈現切換、播放控制 UI |
-| `app/composables/usePose3dClip.ts` | 樣本載入 + rAF 播放時鐘(三版共用) |
+| `app/pages/pose3d-demo.vue` | 頁面:四種呈現切換、播放控制 UI、骨架疊顯開關 |
+| `app/composables/usePose3dClip.ts` | 樣本載入 + rAF 播放時鐘(四版共用) |
 | `app/components/pitch-pose/Pose3dSkeleton.vue` | Three.js 骨架渲染的 Vue 薄殼(~50 行) |
 | `app/components/pitch-pose/core/poseSkeletonScene.ts` | **骨架場景本體(框架無關 class)**——換到 React／Svelte 只要重寫薄殼 |
 | `app/components/pitch-pose/Pose3dHuman.vue` | three.js 真人模型渲染(GLTFLoader + OrbitControls) |
-| `app/components/pitch-pose/core/pose3dRetarget.ts` | keypoints → 人形骨骼旋轉的 retarget 數學(有單元測試) |
+| `app/components/pitch-pose/core/pose3dRetarget.ts` | keypoints → 人形骨骼旋轉的 retarget 數學 + 骨長校正(有單元測試) |
+| `app/components/pitch-pose/Pose3dCapsule.vue` | 程式生成素體渲染的 Vue 薄殼 |
+| `app/components/pitch-pose/core/poseCapsuleScene.ts` | **素體場景本體(框架無關 class)**——不載模型檔,keypoints 直接組幾何 |
+| `app/components/pitch-pose/core/skeletonOverlay.ts` | 骨架疊顯層(x-ray 骨頭線+關節球),真人版與素體版共用 |
 | `app/components/pitch-pose-data/` | **外部依賴**:資料解析、時間軸查找、COCO 拓樸、軸範圍——兩種渲染器共用，必須一併帶上 |
 | `app/components/scene3d/` | **外部依賴**:three 場景樣板、3D 軸盒、hover 標籤——只有 Three.js 版需要 |
 | `app/components/pitch-pose-plotly/` | Plotly 對照版(props 介面相同可直接互換) |
 | `public/samples/pose3d/outcome.json` | 樣本(749 frames、0.7MB;原始 18MB 只留前端讀得到的欄位) |
-| `public/models/Soldier.glb` | 真人模型用的人形角色(2.1MB,Mixamo 骨架,取自 three.js 官方範例) |
+| `public/models/Xbot.glb` | 真人模型用的人形骨架(2.8MB,Mixamo 骨架,取自 three.js 官方範例) |
 
 **未搬入**:來源的 2D 影片骨架疊圖變體(`PoseCanvas.vue`、`PoseOverlay.vue`、`mockPose.ts`)與 server route(`server/api/pitch-outcome.get.ts`,精簡後改讀靜態檔)。
 
@@ -100,6 +103,45 @@ clockMs = (clockMs + (now - lastTick) × rate) % durationMs
 ```
 
 rAF 驅動、速率可選 `[0.05, 0.1, 0.25, 0.5, 1]`(預設 0.25×,250fps 資料以約 62.5fps 視覺速度播放),循環播放;`release.frame_index` 對應幀的時間即「跳到出手瞬間」目標。
+
+**7. 骨長校正(骨頭拉伸,`calibrateSkeleton()`)**
+
+retarget 只設骨頭「旋轉」,骨長維持模型自身比例,所以身高、肩寬、軀幹長對不上這名
+選手,而且誤差會沿骨鏈往末端累積(骨盆釘在資料上,手腕偏最多)。校正在載入時依資料
+量到的骨長拉伸骨架,每位選手自動適配,不需要額外資產或人工量測。
+
+| 段落 | 資料量測 | 縮放的骨鏈 |
+|------|----------|-----------|
+| 上臂 / 前臂 | 肩→肘 / 肘→腕 | `ForeArm` / `Hand` 的 local position |
+| 大腿 / 小腿 | 髖→膝 / 膝→踝 | `Leg` / `Foot` |
+| 肩寬 | 雙肩 keypoint 距離 | `Spine2`→兩側 `Arm` 的鏈 |
+| 軀幹 | 髖中點→肩中點 | `Hips`→`Spine2` 的脊椎鏈 |
+| 頸與頭 | 肩中點→耳中點 | `Neck`→`Head` |
+
+四個非顯而易見的必要設定:
+
+- **改子骨的 local position,不是 `bone.scale`。** 骨架裡一段骨頭的長度就是子骨相對
+  親骨的位移;改 scale 會連帶縮放粗細、往下傳遞到整條子鏈(得逐層反向補償)、且非
+  等比 scale 在關節處產生剪切。
+- **改完不要呼叫 `skeleton.calculateInverses()`。** 蒙皮矩陣是
+  `bone.matrixWorld × 綁定時的逆矩陣`,保留原始綁定網格才會跟著骨頭被拉長;重算逆
+  矩陣等於重新綁定,骨頭移動了網格卻留在原處。
+- **肩線參考點是雙臂根部中點,不是 `Spine2`。** Mixamo 的 `Spine2` 是胸椎骨,位置在
+  肩線以下(肩膀還要再經 `Shoulder` 骨往上往外)。拿它當肩線會讓軀幹量得太短、頸部
+  量得太長,兩個誤差還互相補償不易察覺。
+- **修正量走加法(把 span 差額補到鏈長),不是讓 span 乘比例。** 軀幹與頸部量的距離
+  跨越了被縮放的鏈以外的骨頭,乘法更新在鏈比 span 短時的收斂因子是 −偏移/目標,絕對
+  值可能 >1 而發散振盪。
+
+生產環境的四道防護:比例夾限在 `[0.7, 1.4]`(遮擋或重建失敗會產生離譜骨長,原封套用
+會扯壞網格)、取**中位數**而非平均(單幀離群值不污染校正)、左右同名段**取平均**
+(降噪並避免歪斜人偶)、被夾限與被略過的段落列進 `report`(那是資料異常的訊號,值得追)。
+
+校正**必須早於 `new PoseRetargeter()`**——retargeter 建構時捕捉 rest 姿態的四元數與
+腿長,要看到校正後的骨架(校正後 `fitModelScale()` 的整體等比縮放自然收斂到約 1)。
+
+精度上限:COCO-17 的肩膀是體表標記點、Mixamo 的 `LeftArm` 是關節旋轉中心,兩者天生
+差幾公分,校正後仍有系統性殘差,不會完美貼合。要拿去疊實拍影片對位前須先評估。
 
 ### 渲染
 

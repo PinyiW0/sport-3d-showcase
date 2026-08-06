@@ -2,12 +2,14 @@
 /**
  * 真人模型 3D 動態圖(three.js + Mixamo rigged 角色)。
  * 由父層時鐘餵 `timeMs`,每個 rAF tick 找當下 frame,把 COCO-17 keypoints
- * retarget 成骨骼旋轉套到 /models/Soldier.glb(Adobe Mixamo 角色,取自 three.js 官方範例)。
+ * retarget 成骨骼旋轉套到 /models/Xbot.glb(Adobe Mixamo 角色,取自 three.js 官方範例)。
  *
  * 與 Plotly 版不同,OrbitControls 的視角操作和資料更新天生解耦,
  * 播放中拖曳旋轉不需要任何 workaround。
  */
+import type { Mesh, MeshStandardMaterial, Object3D } from 'three'
 import type { Pose3dFrame } from '../pitch-pose-data/core/parsePitchOutcome'
+import type { SkeletonCalibrationReport } from './core/pose3dRetarget'
 import {
   Box3,
   Color,
@@ -27,11 +29,13 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { findPoseFrame } from '../pitch-pose-data/core/findPoseFrame'
 import {
+  calibrateSkeleton,
   interpolateMissingPoints,
   medianLegLengthM,
   PoseRetargeter,
   toThreeSpace,
 } from './core/pose3dRetarget'
+import { SkeletonOverlay } from './core/skeletonOverlay'
 
 const props = withDefaults(
   defineProps<{
@@ -46,9 +50,19 @@ const props = withDefaults(
     dark?: boolean
     /** Mixamo 角色模型位置。宿主部署在子路徑時要自行接上 baseURL。 */
     modelUrl?: string
+    /** 骨架疊顯（骨頭線 + 關節球，x-ray 貼在模型上）。預設關閉以維持既有呈現。 */
+    skeleton?: boolean
+    /**
+     * 骨長校正：載入時依資料量到的骨長拉伸模型骨架，讓身高、肩寬、軀幹長
+     * 對上這名選手。關閉則只套等比縮放（模型維持自身比例）。
+     * 校正在模型載入時做一次，切換此值需重新掛載元件才會生效。
+     */
+    calibrate?: boolean
   }>(),
-  { height: 480, dark: false, modelUrl: '/models/Soldier.glb' },
+  { height: 480, dark: false, modelUrl: '/models/Xbot.glb', skeleton: false, calibrate: true },
 )
+
+const emit = defineEmits<{ calibrated: [report: SkeletonCalibrationReport] }>()
 
 /**
  * 場景底色與地板網格。深色值對齊 pitch-trajectory 的 CHART_THEME。
@@ -60,6 +74,15 @@ const GRID_COLOR = {
   light: { center: 0xBBBBBB, lines: 0xE2E2E2 },
   dark: { center: 0x555555, lines: 0x333333 },
 } as const
+
+/**
+ * 模型改為灰階(Xbot 原色是粉膚色)。兩段明暗對應模型自帶的兩個材質——
+ * 亮色身體與暗色關節,保留原本的明暗差,不然形體會糊成一片。
+ * 中間調在淺色與深色場景都讀得出來,`dark` 時不另外換色。
+ */
+const MODEL_GREY = { body: 0xB4B4B4, joints: 0x505050 } as const
+/** 亮度門檻:分辨模型自帶的亮色(身體)與暗色(關節)材質。 */
+const BODY_LUMINANCE_MIN = 0.4
 
 const hostRef = ref<HTMLDivElement | null>(null)
 const loading = ref(true)
@@ -74,18 +97,44 @@ let scene: Scene | null = null
 let camera: PerspectiveCamera | null = null
 let container: Group | null = null
 let retargeter: PoseRetargeter | null = null
+let overlay: SkeletonOverlay | null = null
 let resizeObserver: ResizeObserver | null = null
 let rafHandle = 0
 let appliedFrame: unknown = null
+/** 疊顯與模型分開記錄已套用的幀：模型載入前疊顯就能先動。 */
+let overlayFrame: unknown = null
 
 function applyCurrentFrame() {
-  if (!retargeter || !container || props.timeMs == null)
+  if (props.timeMs == null)
     return
   const frame = findPoseFrame(preparedFrames.value, props.timeMs)
-  if (!frame || frame === appliedFrame)
+  if (!frame)
+    return
+  if (frame !== overlayFrame) {
+    overlay?.apply(frame.points)
+    overlayFrame = frame
+  }
+  if (!retargeter || !container || frame === appliedFrame)
     return
   if (retargeter.apply(frame.points, container))
     appliedFrame = frame
+}
+
+/**
+ * 模型材質改灰。以材質原本的亮度分辨身體與關節,而非寫死材質名稱——
+ * 換其他 Mixamo 角色時仍然適用。
+ */
+function applyGreyMaterial(node: Object3D) {
+  const materials = (node as Mesh).material
+  if (!materials)
+    return
+  for (const material of Array.isArray(materials) ? materials : [materials]) {
+    const color = (material as MeshStandardMaterial).color
+    if (!color)
+      continue
+    const luminance = 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b
+    color.setHex(luminance >= BODY_LUMINANCE_MIN ? MODEL_GREY.body : MODEL_GREY.joints)
+  }
 }
 
 function fitModelScale() {
@@ -134,6 +183,8 @@ function resize() {
   renderer.setSize(width, props.height)
   camera.aspect = width / props.height
   camera.updateProjectionMatrix()
+  // Line2 線寬靠畫布尺寸換算，不同步 resolution 線寬會失真
+  overlay?.setResolution(width, props.height)
 }
 
 function renderLoop() {
@@ -162,6 +213,10 @@ onMounted(async () => {
   controls = new OrbitControls(camera, renderer.domElement)
   controls.enableDamping = true
 
+  // 本場景單位是 m（y-up），關節球半徑對齊骨架版的 3.2cm
+  overlay = new SkeletonOverlay(scene, { jointRadius: 0.032 })
+  overlay.setVisible(props.skeleton)
+
   resize()
   resizeObserver = new ResizeObserver(resize)
   resizeObserver.observe(host)
@@ -175,7 +230,11 @@ onMounted(async () => {
     gltf.scene.traverse((node) => {
       if ('isSkinnedMesh' in node && node.isSkinnedMesh)
         node.frustumCulled = false
+      applyGreyMaterial(node)
     })
+    // 校正必須早於 retargeter：建構時會捕捉 rest 姿態的四元數與腿長
+    if (props.calibrate)
+      emit('calibrated', calibrateSkeleton(gltf.scene, preparedFrames.value))
     retargeter = new PoseRetargeter(gltf.scene)
     container = new Group()
     container.add(gltf.scene)
@@ -192,9 +251,11 @@ onMounted(async () => {
 // frames 更新(重新載入資料)時重算縮放,並讓下個 tick 重套姿勢
 watch(preparedFrames, () => {
   appliedFrame = null
+  overlayFrame = null
   fitModelScale()
 })
 watch(() => props.height, resize)
+watch(() => props.skeleton, visible => overlay?.setVisible(visible))
 
 onBeforeUnmount(() => {
   cancelAnimationFrame(rafHandle)
