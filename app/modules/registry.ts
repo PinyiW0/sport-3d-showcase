@@ -2,8 +2,9 @@ import type { ModuleSpec } from './types'
 import { defineAsyncComponent } from 'vue'
 
 // 全部 3D 研究模組的登錄表。索引頁與展示頁都讀這裡。
-// done  = 研究告一段落（baseball-spin、pitch-pose-skeleton、pitch-trajectory）
-// wip   = 有可運作實作可點進去看，但還在調整
+// done  = 研究告一段落（baseball-spin、clock-spin、pitch-pose-skeleton、
+//         pitch-trajectory、strike-zone-grid、pitch-distribution）
+// wip   = 有可運作實作可點進去看，但還在調整（pitch-pose-human）
 // planned = 尚未動工，四個必備區塊先給文字輪廓、參考資料選填
 
 // baseball-spin 樣本（後端 result.json 原格式，snake_case；取自 public/samples/spin/sample1）
@@ -115,7 +116,7 @@ export const modules: ModuleSpec[] = [
     slug: 'clock-spin',
     title: '時鐘轉軸',
     sport: 'baseball',
-    status: 'wip',
+    status: 'done',
     summary: '把 spin_tilt 以 2D 時鐘面板呈現：盤面靜態、指針整組 rotate(spin_tilt.degrees)。與 baseball-spin 的 3D 指針是同一份資料的兩種呈現。',
     tags: ['SVG', '2D', 'spin-tilt'],
     updated: '2026-07',
@@ -305,8 +306,8 @@ export const modules: ModuleSpec[] = [
     slug: 'strike-zone-grid',
     title: '九宮格落點圖',
     sport: 'baseball',
-    status: 'wip',
-    summary: '把入壘點投影到好球帶九宮格的純 SVG 呈現，含好壞球幾何判定與本壘板、打擊區的透視底座；縮放為真實比例等比換算，不會把好球帶畫扁。呈現細節仍在調整中。',
+    status: 'done',
+    summary: '把入壘點投影到好球帶九宮格的純 SVG 呈現，含好壞球幾何判定與本壘板、打擊區的透視底座；縮放為真實比例等比換算，不會把好球帶畫扁。',
     tags: ['SVG', 'strike-zone', '2D', '好壞球判定'],
     updated: '2026-07',
     demoRoute: '/bt3d-demo',
@@ -348,7 +349,7 @@ export const modules: ModuleSpec[] = [
     slug: 'pitch-distribution',
     title: '落點分布圖',
     sport: 'baseball',
-    status: 'wip',
+    status: 'done',
     summary: '一批投球在好球帶上的分布：九宮格熱區看集中在哪，散點疊圖看實際散布與框外的球，可依投手與球種篩選。與九宮格落點圖的分工是「這批球」對「這一球」。',
     tags: ['SVG', 'heatmap', 'distribution', '2D'],
     updated: '2026-07',
