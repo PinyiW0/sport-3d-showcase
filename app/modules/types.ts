@@ -32,6 +32,13 @@ export interface ModuleHandoff {
   flexPoints: string[]
 }
 
+/**
+ * 已知限制（非必填）：這個做法目前卡在哪、要落地還缺什麼。
+ * 寫給日後評估「這條路能不能走」的人看——只放技術上的硬限制，
+ * 不放待辦清單（那屬於 issue）。
+ */
+export type ModuleLimitation = string
+
 /** 參考資料（非必填）：研究筆記、外部連結等 */
 export interface ModuleReference {
   label: string
@@ -59,6 +66,8 @@ export interface ModuleSpec {
   data: ModuleDataSpec
   /** 交接說明 */
   handoff: ModuleHandoff
+  /** 已知限制（非必填） */
+  limitations?: ModuleLimitation[]
   /** 參考資料（非必填） */
   references?: ModuleReference[]
 }
