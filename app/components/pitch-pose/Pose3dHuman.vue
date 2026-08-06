@@ -2,7 +2,7 @@
 /**
  * 真人模型 3D 動態圖(three.js + Mixamo rigged 角色)。
  * 由父層時鐘餵 `timeMs`,每個 rAF tick 找當下 frame,把 COCO-17 keypoints
- * retarget 成骨骼旋轉套到 /models/Xbot.glb(Adobe Mixamo 角色,取自 three.js 官方範例)。
+ * retarget 成骨骼旋轉套到 /models/Soldier.glb(Adobe Mixamo 角色,取自 three.js 官方範例)。
  *
  * 與 Plotly 版不同,OrbitControls 的視角操作和資料更新天生解耦,
  * 播放中拖曳旋轉不需要任何 workaround。
@@ -47,7 +47,7 @@ const props = withDefaults(
     /** Mixamo 角色模型位置。宿主部署在子路徑時要自行接上 baseURL。 */
     modelUrl?: string
   }>(),
-  { height: 480, dark: false, modelUrl: '/models/Xbot.glb' },
+  { height: 480, dark: false, modelUrl: '/models/Soldier.glb' },
 )
 
 /**

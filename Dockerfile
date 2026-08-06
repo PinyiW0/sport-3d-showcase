@@ -13,7 +13,9 @@ RUN npm ci --ignore-scripts
 # .dockerignore 會排除 .env 等機敏檔案
 COPY . .
 
-RUN npx nuxt prepare && npm run build
+# 站台部署用 github-pages 靜態 preset（nuxt.config 寫死、無 server 產物），
+# gate container 需要可執行的 server → 以 NITRO_PRESET 覆蓋（env 優先於 config）
+RUN npx nuxt prepare && NITRO_PRESET=node-server npm run build
 
 # ---- Runtime ----
 FROM node:22-alpine AS runtime
