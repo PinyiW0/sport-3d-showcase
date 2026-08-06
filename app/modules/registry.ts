@@ -208,7 +208,7 @@ export const modules: ModuleSpec[] = [
     presentation: defineAsyncComponent(() => import('~/components/modules/PitchPoseHumanShowcase.vue')),
     tech: [
       'Three.js（GLTFLoader、OrbitControls、Quaternion retarget）',
-      'Xbot.glb（three.js 官方範例人形骨架）',
+      'Soldier.glb（three.js 官方範例人形角色）',
       '缺測 keypoint 線性補值',
       'Vue 3 / Nuxt 4',
     ],
@@ -222,7 +222,7 @@ export const modules: ModuleSpec[] = [
       files: [
         'app/components/pitch-pose/（整包 cp 即可，含單元測試；真人版另需 Pose3dHuman.vue + core/pose3dRetarget.ts）',
         'app/composables/usePose3dClip.ts（樣本載入 + 播放時鐘）',
-        'public/models/Xbot.glb（人形骨架模型，2.8MB）',
+        'public/models/Soldier.glb（人形角色模型，2.1MB）',
         'public/samples/pose3d/outcome.json',
       ],
       dependencies: ['Nuxt 4（元件靠 auto-import 取得 ref/onMounted 等，非 Nuxt 環境需自行補 import）', 'three', '@types/three（dev）', 'tailwindcss（元件的 class 樣式）'],
