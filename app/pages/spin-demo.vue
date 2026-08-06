@@ -20,6 +20,8 @@ const gifUrl = computed(() => asset(`/samples/spin/${selected.value}/result.gif`
 
 // 本批 sample gif 由幀數反推 slow_factor = 60（83/69/86 幀 ÷ 30fps ≈ 真實一圈 × 60）
 const speedOptions = [
+  { label: '1/80x', value: 1 / 80 },
+  { label: '1/70x', value: 1 / 70 },
   { label: '1/60x（對照 gif）', value: 1 / 60 },
   { label: '1/50x', value: 1 / 50 },
   { label: '1/45x', value: 1 / 45 },
@@ -29,6 +31,7 @@ const speedOptions = [
 ]
 const speed = ref(1 / 60)
 const showArrow = ref(true)
+const showRing = ref(true)
 
 const viewerRef = ref<{ play: () => void, pause: () => void } | null>(null)
 
@@ -78,6 +81,7 @@ const metrics = computed(() => {
             :model-url="asset('/models/baseball_detail.glb')"
             :speed="speed"
             :show-axis-arrow="showArrow"
+            :show-direction-ring="showRing"
           />
         </div>
       </div>
@@ -100,6 +104,7 @@ const metrics = computed(() => {
       </UButton>
       <USelect v-model="speed" :items="speedOptions" size="sm" class="w-48" />
       <USwitch v-model="showArrow" label="轉軸指針" />
+      <USwitch v-model="showRing" label="方向環" />
     </div>
 
     <dl class="grid grid-cols-5 gap-4 text-sm">

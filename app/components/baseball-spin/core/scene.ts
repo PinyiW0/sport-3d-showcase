@@ -6,12 +6,17 @@ import {
   ConeGeometry,
   CylinderGeometry,
   DirectionalLight,
+  DoubleSide,
   Group,
+  Matrix4,
   Mesh,
+  MeshBasicMaterial,
   MeshStandardMaterial,
   NoToneMapping,
   OrthographicCamera,
   Scene,
+  Shape,
+  ShapeGeometry,
   Texture,
   Vector3 as Vec3Cls,
   WebGLRenderer,
@@ -46,6 +51,9 @@ export class BaseballSpinScene {
   private modelRoot: Object3D | null = null
   private axisArrow: Group | null = null
   private axisArrowVisible = true
+  private directionRing: Group | null = null
+  private ringSpinner: Group | null = null
+  private directionRingVisible = true
   private qRef: Quaternion | null = null
   private axisSigned: Vector3 | null = null
   private radPerSec = 0
@@ -113,6 +121,7 @@ export class BaseballSpinScene {
     this.radPerSec = angularSpeedRadPerSec(result.animation)
     this.theta = 0
     this.updateAxisArrow()
+    this.updateDirectionRing()
     this.applyAttitude()
     this.renderFrame()
   }
@@ -122,6 +131,14 @@ export class BaseballSpinScene {
     this.axisArrowVisible = visible
     if (this.axisArrow)
       this.axisArrow.visible = visible
+    this.renderFrame()
+  }
+
+  // 顯示／隱藏旋轉方向環
+  setDirectionRingVisible(visible: boolean): void {
+    this.directionRingVisible = visible
+    if (this.directionRing)
+      this.directionRing.visible = visible
     this.renderFrame()
   }
 
@@ -186,6 +203,9 @@ export class BaseballSpinScene {
     if (!this.qRef || !this.axisSigned)
       return
     attitudeAt(this.qRef, this.axisSigned, this.theta, this.spinGroup.quaternion)
+    // 方向環與球同步繞帶號軸轉動（環的 local +Y 已對齊軸向）
+    if (this.ringSpinner)
+      this.ringSpinner.rotation.y = this.theta
   }
 
   // 3D 軸箭頭（同後端 set_rotation_axis：全長 4r、桿半徑 0.035、單頭）。
@@ -200,6 +220,20 @@ export class BaseballSpinScene {
     // 幾何以 +Y 為軸向，轉到自轉軸方向（箭頭指向帶號軸正端）
     this.axisArrow.quaternion.setFromUnitVectors(_up, this.axisSigned)
     this.axisArrow.visible = this.axisArrowVisible
+  }
+
+  // 旋轉方向環：外層 group 對齊軸向，內層 spinner 隨 theta 轉動
+  private updateDirectionRing(): void {
+    if (!this.axisSigned)
+      return
+    if (!this.directionRing) {
+      const { ring, spinner } = buildDirectionRing()
+      this.directionRing = ring
+      this.ringSpinner = spinner
+      this.scene.add(ring)
+    }
+    this.directionRing.quaternion.setFromUnitVectors(_up, this.axisSigned)
+    this.directionRing.visible = this.directionRingVisible
   }
 
   private renderFrame(): void {
@@ -219,6 +253,45 @@ function buildAxisArrow(): Group {
   const group = new Group()
   group.add(shaft, head)
   return group
+}
+
+// 黃色 chevron 方向環：18 個平面箭頭躺在赤道面、於球外圍自成一圈（半徑 1.35 > 球半徑 1），
+// 全部指向切線（運動）方向。薄片同平面＋不受光均勻色，避免 3D 實體各朝向明暗形狀不一的雜訊。
+// attitudeAt 的 theta 恆正、旋向已折進帶號軸，因此右手定則繞 +Y 排列的箭頭
+// 經外層 quaternion 對齊軸向後必與實際轉向一致（負轉速 = 軸反向 = 環同步反向）
+function buildDirectionRing(): { ring: Group, spinner: Group } {
+  // chevron 平面形（XY 平面）：+X 為箭頭指向、Y 為環面內帶寬，法線 +Z 對齊軸向
+  const shape = new Shape()
+  shape.moveTo(0.18, 0)
+  shape.lineTo(-0.09, 0.16)
+  shape.lineTo(-0.21, 0.16)
+  shape.lineTo(0.06, 0)
+  shape.lineTo(-0.21, -0.16)
+  shape.lineTo(-0.09, -0.16)
+  shape.closePath()
+  const geometry = new ShapeGeometry(shape)
+  // 同軸箭頭的黃，方向環與轉軸讀成同一組指示元素
+  const material = new MeshBasicMaterial({ color: 0xFACC15, side: DoubleSide })
+
+  const spinner = new Group()
+  const count = 18
+  const radius = 1.35
+  const basis = new Matrix4()
+  const radialIn = new Vec3Cls()
+  for (let i = 0; i < count; i++) {
+    const u = i / count * 2 * Math.PI
+    const tangent = new Vec3Cls(-Math.sin(u), 0, -Math.cos(u))
+    const radial = new Vec3Cls(Math.cos(u), 0, -Math.sin(u))
+    const mesh = new Mesh(geometry, material)
+    mesh.position.copy(radial).multiplyScalar(radius)
+    // 右手基底 (切線, −徑向, 軸向)：薄片躺平於環面，X 指向運動方向
+    mesh.quaternion.setFromRotationMatrix(basis.makeBasis(tangent, radialIn.copy(radial).negate(), _up))
+    spinner.add(mesh)
+  }
+
+  const ring = new Group()
+  ring.add(spinner)
+  return { ring, spinner }
 }
 
 // 釋放物件樹的 geometry / material / texture，避免 WebGL 資源洩漏
