@@ -257,7 +257,7 @@ const ready = computed(() => {
       :frames="poseClip.frames"
       :time-ms="clockMs"
       :height="PREVIEW_HEIGHT"
-      :model-url="asset('/models/Soldier.glb')"
+      :model-url="asset('/models/Xbot.glb')"
       dark
     />
   </div>
