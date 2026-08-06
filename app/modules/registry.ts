@@ -238,6 +238,12 @@ export const modules: ModuleSpec[] = [
         'OrbitControls 初始視角與畫布高度 height',
       ],
     },
+    limitations: [
+      '每位選手都要重建一次人形：模型骨長是固定的，換一位投手就得依他的 keypoints 重跑骨長校正、重新產生骨架。校正已自動化（不需人工量測），但仍是每次載入的必要步驟；體型差異超過約 ±30% 時，蒙皮網格會在關節處出現擠壓變形。相較之下素體版由 keypoints 直接長出身體，任何體型天生吻合、沒有這層成本。',
+      '手掌與手指的細部姿勢無資料可呈現：COCO-17 每隻手只有一個「手腕」點，沒有掌心朝向與指節，握球方式與出手瞬間的撥指動作都無法還原，模型的手只能維持 rest pose 的固定姿勢。這對投球分析是實質缺口（握法與出手是球種與轉軸的關鍵），要補上得改用帶手部關鍵點的姿態模型（如 COCO-WholeBody 133 點或 MediaPipe Hands）重新產出資料。',
+      '骨架與模型的關節定義天生有落差：COCO-17 的肩膀是體表標記點、Mixamo 的 LeftArm 是關節旋轉中心，兩者差幾公分，骨長校正後仍有系統性殘差，不會完美貼合。純展示足夠，要疊在實拍影片上對位前須先評估。',
+      '手腕旋轉、脊椎逐節彎曲等 COCO-17 沒有的自由度維持 rest pose，為近似值。',
+    ],
     references: [
       { label: 'app/components/pitch-pose/core/pose3dRetarget.ts（retarget 數學與骨骼對照）' },
     ],

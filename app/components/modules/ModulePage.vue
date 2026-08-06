@@ -4,8 +4,8 @@ import { computed } from 'vue'
 import ModuleSection from '~/components/modules/ModuleSection.vue'
 import { SPORT_LABEL, STATUS_LABEL } from '~/modules/types'
 
-// 模組展示頁範本：吃一個 ModuleSpec，渲染標題列 + 五個固定區塊
-// （模組呈現／數據資料／使用技術／交接說明／參考資料）。
+// 模組展示頁範本：吃一個 ModuleSpec，渲染標題列 + 六個區塊
+// （模組呈現／數據資料／使用技術／交接說明／已知限制／參考資料），後兩個選填。
 const props = defineProps<{ module: ModuleSpec }>()
 
 const STATUS_COLOR: Record<ModuleStatus, 'success' | 'info' | 'neutral'> = {
@@ -168,7 +168,16 @@ const m = computed(() => props.module)
       </div>
     </ModuleSection>
 
-    <!-- 5. 參考資料（選填） -->
+    <!-- 5. 已知限制（選填） -->
+    <ModuleSection v-if="m.limitations?.length" title="已知限制" icon="i-heroicons-exclamation-triangle" optional>
+      <ul class="list-disc space-y-2 pl-4 text-sm text-neutral-700 dark:text-neutral-300">
+        <li v-for="l in m.limitations" :key="l">
+          {{ l }}
+        </li>
+      </ul>
+    </ModuleSection>
+
+    <!-- 6. 參考資料（選填） -->
     <ModuleSection v-if="m.references?.length" title="參考資料" icon="i-heroicons-book-open" optional>
       <ul class="space-y-1.5 text-sm">
         <li v-for="r in m.references" :key="r.label">
