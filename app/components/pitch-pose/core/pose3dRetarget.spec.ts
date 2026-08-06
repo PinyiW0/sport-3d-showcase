@@ -1,4 +1,4 @@
-import type { Pose3dFrame } from './parsePitchOutcome'
+import type { Pose3dFrame } from '../../pitch-pose-data/core/parsePitchOutcome'
 import { Bone, Group, Vector3 } from 'three'
 import { describe, expect, it } from 'vitest'
 import {

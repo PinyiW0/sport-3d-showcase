@@ -1,5 +1,5 @@
-import type { PitchAnalysisResult, Point3D } from '~/components/pitch-trajectory/core/usePitch3d'
-import { parsePitchTrajectory } from '~/components/pitch-trajectory/core/usePitch3d'
+import type { PitchAnalysisResult, Point3D } from '~/components/pitch-trajectory-data/core/trajectoryGeometry'
+import { parsePitchTrajectory } from '~/components/pitch-trajectory-data/core/trajectoryGeometry'
 
 // bt3d 樣本包的讀取層：pitch-trajectory 與 strike-zone-grid 兩個模組共用同一份 25 球資料。
 // 欄位維持後端 analysis_result.json 的 snake_case，交接時可直接餵後端原檔。
