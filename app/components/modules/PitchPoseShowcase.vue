@@ -34,7 +34,7 @@ const rendererOptions = [
 
     <template v-else>
       <div class="bg-neutral-100 dark:bg-neutral-800">
-        <Pose3dHuman v-if="mode === 'human'" :frames="pitch.frames" :time-ms="clockMs" :height="440" :model-url="asset('/models/Xbot.glb')" />
+        <Pose3dHuman v-if="mode === 'human'" :frames="pitch.frames" :time-ms="clockMs" :height="440" :model-url="asset('/models/Soldier.glb')" />
         <Pose3dSkeleton v-else-if="renderer === 'three'" :frames="pitch.frames" :time-ms="clockMs" :height="440" />
         <!-- v-else 而非常駐：不切到對照版就不會觸發 plotly 的 dynamic import -->
         <Pose3dSkeletonPlotly v-else :frames="pitch.frames" :time-ms="clockMs" :height="440" />
