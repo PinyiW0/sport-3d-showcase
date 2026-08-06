@@ -291,3 +291,283 @@ export class PoseRetargeter {
     return true
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * 骨長校正(骨頭拉伸)
+ * ------------------------------------------------------------------ */
+
+/**
+ * 比例夾限。遮擋或重建失敗會產生離譜骨長,原封套用會把蒙皮網格扯壞;
+ * 夾限外的段落會列進 report.clamped,那通常代表該段資料有問題值得追。
+ */
+const RATIO_MIN = 0.7
+const RATIO_MAX = 1.4
+
+/**
+ * 校正回合數。共線時一回合就精確——修正量是「把差額加到鏈長」而非「span 乘比例」:
+ * 軀幹量的是髖→肩中心,但被縮放的脊椎鏈只佔其中一段(肩膀還要再經 Shoulder 骨
+ * 往上往外),乘法更新在鏈比 span 短時的收斂因子是 −偏移/目標,絕對值可能 >1
+ * 而發散振盪;加法補差額沒這個問題。多跑幾回合是為了非共線的殘差與鏈間耦合。
+ */
+const CALIBRATION_PASSES = 3
+
+export interface SkeletonCalibrationReport {
+  /** 各段實際套用的比例(已對稱化、已夾限)。 */
+  ratios: Record<string, number>
+  /** 被夾限的段落——資料異常的訊號。 */
+  clamped: string[]
+  /** 資料不足而跳過的段落(該段 keypoint 整段缺測)。 */
+  skipped: string[]
+}
+
+/** 一段可校正的骨長:量模型、量資料,再把整條鏈的 local position 等比縮放。 */
+interface CalibrationSegment {
+  key: string
+  /**
+   * 要縮放 local position 的骨頭。整條鏈一起縮,鏈本身的總長才會剛好等比——
+   * 鏈上每段位移都乘 k,累加後的端點位移也恰好是 k 倍。
+   */
+  chain: Object3D[]
+  /** 被縮放的那條鏈本身的端到端長度。 */
+  measureChain: () => number
+  /**
+   * 要對上資料的那段距離。多數段落與 measureChain 相同;軀幹與頸部量的距離
+   * 跨越了鏈以外的骨頭(肩膀的橫向偏移),兩者不等,修正量才要走加法。
+   */
+  measureSpan: () => number
+  /** 單幀的資料長度;該幀缺測回 null。 */
+  dataLength: (points: ReadonlyArray<Vector3 | null>) => number | null
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max)
+}
+
+function median(values: readonly number[]): number | null {
+  if (values.length === 0)
+    return null
+  const sorted = [...values].sort((a, b) => a - b)
+  return sorted[Math.floor(sorted.length / 2)]!
+}
+
+/** 兩個 keypoint 的距離;任一缺測回 null。 */
+function kpSpan(points: ReadonlyArray<Vector3 | null>, a: number, b: number): number | null {
+  const pa = points[a]
+  const pb = points[b]
+  return pa && pb ? pa.distanceTo(pb) : null
+}
+
+/** 左右同名段的兩組端點:[左起, 左訖, 右起, 右訖]。 */
+type SpanKeypoints = readonly [number, number, number, number]
+
+/** 左右同名段取平均:真人身體接近對稱,平均可降噪並避免做出歪斜的人偶。 */
+function symmetricSpan(
+  points: ReadonlyArray<Vector3 | null>,
+  leftA: number,
+  leftB: number,
+  rightA: number,
+  rightB: number,
+): number | null {
+  const sides = [kpSpan(points, leftA, leftB), kpSpan(points, rightA, rightB)]
+    .filter((v): v is number => v != null)
+  return sides.length > 0 ? sides.reduce((sum, v) => sum + v, 0) / sides.length : null
+}
+
+function midOrNull(a: Vector3 | null | undefined, b: Vector3 | null | undefined): Vector3 | null {
+  return a && b ? mid(a, b) : null
+}
+
+/**
+ * 從 descendant 往上收集到 ancestor(不含 ancestor)的骨頭鏈。
+ * 走不到 ancestor 回傳 null——rig 拓樸不符時寧可跳過該段,不要亂縮一通。
+ */
+function chainBetween(ancestor: Object3D, descendant: Object3D): Object3D[] | null {
+  const chain: Object3D[] = []
+  let node: Object3D | null = descendant
+  while (node && node !== ancestor) {
+    chain.push(node)
+    node = node.parent
+  }
+  return node === ancestor ? chain : null
+}
+
+/**
+ * 依資料量到的骨長校正模型骨架,讓身高、肩寬、軀幹長對上這名選手。
+ *
+ * **改的是子骨的 local position,不是 `bone.scale`。** 骨架裡一段骨頭的長度
+ * 就是子骨相對親骨的位移;改 scale 會連帶縮放粗細、往下傳遞到整條子鏈
+ * (得逐層反向補償)、且非等比 scale 在關節處產生剪切。改位置全部避開。
+ *
+ * **改完不要呼叫 `skeleton.calculateInverses()`。** 蒙皮矩陣是
+ * `bone.matrixWorld × 綁定時的逆矩陣`,保留原始綁定網格才會跟著骨頭被拉長;
+ * 重算逆矩陣等於重新綁定,骨頭移動了網格卻留在原處,校正就失效了。
+ *
+ * **必須在 `new PoseRetargeter()` 之前呼叫**——retargeter 建構時捕捉 rest
+ * 姿態的四元數與腿長,要看到校正後的骨架(校正後 `fitModelScale()` 的整體
+ * 等比縮放會自然收斂到約 1,留著當保險不影響結果)。
+ *
+ * 精度上限:COCO-17 的肩膀是體表標記點、Mixamo 的 `LeftArm` 是關節旋轉中心,
+ * 兩者天生差幾公分,校正後仍有系統性殘差,不會完美貼合。
+ */
+export function calibrateSkeleton(
+  root: Object3D,
+  frames: readonly Pose3dFrameVec[],
+): SkeletonCalibrationReport {
+  root.updateWorldMatrix(true, true)
+
+  const bones = Object.fromEntries(
+    BONE_NAMES.map(name => [name, findBone(root, name)]),
+  ) as Record<BoneName, Object3D>
+  const worldPos = (name: BoneName) => bones[name].getWorldPosition(new Vector3())
+  /**
+   * 模型的肩中心。注意不能拿 Spine2 當肩線——Mixamo 的 Spine2 是胸椎骨,
+   * 位置在肩線以下,肩膀還要再經 Shoulder 骨往上往外。用它當參考點會讓
+   * 軀幹量得太短、頸部量得太長(兩個誤差還互相補償,不容易發現)。
+   */
+  const modelShoulderCenter = () => mid(worldPos('LeftArm'), worldPos('RightArm'))
+
+  /** 左右同名段的模型長度平均,對應資料端的 symmetricSpan。 */
+  const symmetricModelLength = (
+    leftA: BoneName,
+    leftB: BoneName,
+    rightA: BoneName,
+    rightB: BoneName,
+  ) => (worldPos(leftA).distanceTo(worldPos(leftB)) + worldPos(rightA).distanceTo(worldPos(rightB))) / 2
+
+  const segments: CalibrationSegment[] = []
+  const skipped: string[] = []
+
+  /** 四肢:左右成對,子骨即該段的長度載體。 */
+  const limbs = [
+    {
+      key: '上臂',
+      chain: [bones.LeftForeArm, bones.RightForeArm],
+      model: () => symmetricModelLength('LeftArm', 'LeftForeArm', 'RightArm', 'RightForeArm'),
+      kps: [KP.leftShoulder, KP.leftElbow, KP.rightShoulder, KP.rightElbow] as SpanKeypoints,
+    },
+    {
+      key: '前臂',
+      chain: [bones.LeftHand, bones.RightHand],
+      model: () => symmetricModelLength('LeftForeArm', 'LeftHand', 'RightForeArm', 'RightHand'),
+      kps: [KP.leftElbow, KP.leftWrist, KP.rightElbow, KP.rightWrist] as SpanKeypoints,
+    },
+    {
+      key: '大腿',
+      chain: [bones.LeftLeg, bones.RightLeg],
+      model: () => symmetricModelLength('LeftUpLeg', 'LeftLeg', 'RightUpLeg', 'RightLeg'),
+      kps: [KP.leftHip, KP.leftKnee, KP.rightHip, KP.rightKnee] as SpanKeypoints,
+    },
+    {
+      key: '小腿',
+      chain: [bones.LeftFoot, bones.RightFoot],
+      model: () => symmetricModelLength('LeftLeg', 'LeftFoot', 'RightLeg', 'RightFoot'),
+      kps: [KP.leftKnee, KP.leftAnkle, KP.rightKnee, KP.rightAnkle] as SpanKeypoints,
+    },
+  ]
+  for (const limb of limbs) {
+    segments.push({
+      key: limb.key,
+      chain: limb.chain,
+      measureChain: limb.model,
+      measureSpan: limb.model, // 量的就是被縮放的那一段
+      dataLength: points => symmetricSpan(points, ...limb.kps),
+    })
+  }
+
+  // 肩寬:縮放 Spine2→兩側 Arm 的整條鏈,兩臂根部的間距即等比變化
+  const leftArmChain = chainBetween(bones.Spine2, bones.LeftArm)
+  const rightArmChain = chainBetween(bones.Spine2, bones.RightArm)
+  if (leftArmChain && rightArmChain) {
+    segments.push({
+      key: '肩寬',
+      chain: [...leftArmChain, ...rightArmChain],
+      // 兩側鏈同時等比縮放,兩臂根部的間距就是等比變化,鏈長即 span
+      measureChain: () => worldPos('LeftArm').distanceTo(worldPos('RightArm')),
+      measureSpan: () => worldPos('LeftArm').distanceTo(worldPos('RightArm')),
+      dataLength: points => kpSpan(points, KP.leftShoulder, KP.rightShoulder),
+    })
+  }
+  else {
+    skipped.push('肩寬')
+  }
+
+  // 軀幹長:資料的髖中點→肩中點,長度載體是脊椎鏈(只佔這段距離的一部分,靠迭代收斂)
+  const spineChain = chainBetween(bones.Hips, bones.Spine2)
+  if (spineChain) {
+    segments.push({
+      key: '軀幹',
+      chain: spineChain,
+      measureChain: () => worldPos('Hips').distanceTo(worldPos('Spine2')),
+      measureSpan: () => worldPos('Hips').distanceTo(modelShoulderCenter()),
+      dataLength: (points) => {
+        const hipCenter = midOrNull(points[KP.leftHip], points[KP.rightHip])
+        const shoulderCenter = midOrNull(points[KP.leftShoulder], points[KP.rightShoulder])
+        return hipCenter && shoulderCenter ? hipCenter.distanceTo(shoulderCenter) : null
+      },
+    })
+  }
+  else {
+    skipped.push('軀幹')
+  }
+
+  // 頸+頭:資料的肩中點→耳中點,長度載體是 Neck→Head 鏈
+  const headChain = chainBetween(bones.Spine2, bones.Head)
+  if (headChain) {
+    segments.push({
+      key: '頸與頭',
+      chain: headChain,
+      measureChain: () => worldPos('Spine2').distanceTo(worldPos('Head')),
+      measureSpan: () => modelShoulderCenter().distanceTo(worldPos('Head')),
+      dataLength: (points) => {
+        const shoulderCenter = midOrNull(points[KP.leftShoulder], points[KP.rightShoulder])
+        const earCenter = midOrNull(points[KP.leftEar], points[KP.rightEar])
+        return shoulderCenter && earCenter ? shoulderCenter.distanceTo(earCenter) : null
+      },
+    })
+  }
+  else {
+    skipped.push('頸與頭')
+  }
+
+  // 資料端的目標長度只算一次(不受骨頭變動影響)
+  const targets = new Map<string, number>()
+  for (const segment of segments) {
+    const samples = frames
+      .map(frame => segment.dataLength(frame.points))
+      .filter((v): v is number => v != null && v > 0)
+    const target = median(samples)
+    if (target == null)
+      skipped.push(segment.key)
+    else
+      targets.set(segment.key, target)
+  }
+
+  // 定點迭代:每回合重量模型、只補殘差,累積比例才是最終套用值
+  const ratios: Record<string, number> = {}
+  const clampedSet = new Set<string>()
+  for (let pass = 0; pass < CALIBRATION_PASSES; pass++) {
+    for (const segment of segments) {
+      const target = targets.get(segment.key)
+      if (target == null)
+        continue
+      const chainLength = segment.measureChain()
+      if (chainLength <= 0)
+        continue
+      const applied = ratios[segment.key] ?? 1
+      // 把 span 的差額直接補到鏈長上,而非讓 span 乘比例——後者在鏈比 span 短時發散
+      const wanted = applied * ((chainLength + target - segment.measureSpan()) / chainLength)
+      const next = clamp(wanted, RATIO_MIN, RATIO_MAX)
+      if (Math.abs(next - wanted) > 1e-9)
+        clampedSet.add(segment.key)
+      else
+        clampedSet.delete(segment.key)
+      for (const bone of segment.chain)
+        bone.position.multiplyScalar(next / applied)
+      ratios[segment.key] = next
+      // 下一段要量到最新的世界座標,鏈與鏈之間有耦合(縮肩寬會動到肩中心)
+      root.updateWorldMatrix(true, true)
+    }
+  }
+
+  return { ratios, clamped: [...clampedSet], skipped }
+}
