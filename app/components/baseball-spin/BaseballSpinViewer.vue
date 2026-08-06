@@ -13,12 +13,14 @@ const props = withDefaults(defineProps<{
   speed?: number
   autoplay?: boolean
   showAxisArrow?: boolean
+  showDirectionRing?: boolean
   view?: SpinViewPreset
 }>(), {
   modelUrl: '/models/baseball_detail.glb',
   speed: 1,
   autoplay: true,
   showAxisArrow: true,
+  showDirectionRing: true,
   view: 'camera',
 })
 
@@ -42,6 +44,7 @@ onMounted(async () => {
     const { BaseballSpinScene } = await import('./core/scene')
     scene = new BaseballSpinScene(containerRef.value, { view: props.view, speed: props.speed })
     scene.setAxisArrowVisible(props.showAxisArrow)
+    scene.setDirectionRingVisible(props.showDirectionRing)
 
     resizeObserver = new ResizeObserver(() => scene?.resize())
     resizeObserver.observe(containerRef.value)
@@ -78,6 +81,10 @@ watch(() => props.speed, (speed) => {
 
 watch(() => props.showAxisArrow, (visible) => {
   scene?.setAxisArrowVisible(visible)
+})
+
+watch(() => props.showDirectionRing, (visible) => {
+  scene?.setDirectionRingVisible(visible)
 })
 
 onUnmounted(() => {

@@ -27,7 +27,7 @@
 | `app/components/scene3d/` | **外部依賴**:three 場景樣板、3D 軸盒、hover 標籤——只有 Three.js 版需要 |
 | `app/components/pitch-pose-plotly/` | Plotly 對照版(props 介面相同可直接互換) |
 | `public/samples/pose3d/outcome.json` | 樣本(749 frames、0.7MB;原始 18MB 只留前端讀得到的欄位) |
-| `public/models/Xbot.glb` | 真人模型用的人形骨架(2.8MB) |
+| `public/models/Soldier.glb` | 真人模型用的人形角色(2.1MB,Mixamo 骨架,取自 three.js 官方範例) |
 
 **未搬入**:來源的 2D 影片骨架疊圖變體(`PoseCanvas.vue`、`PoseOverlay.vue`、`mockPose.ts`)與 server route(`server/api/pitch-outcome.get.ts`,精簡後改讀靜態檔)。
 

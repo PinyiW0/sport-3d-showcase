@@ -17,12 +17,18 @@ const { data: spinData, error } = useFetch(
 )
 
 const speedOptions = [
+  { label: '1/80x', value: 1 / 80 },
+  { label: '1/70x', value: 1 / 70 },
   { label: '1/60x（對照後端 gif）', value: 1 / 60 },
+  { label: '1/50x', value: 1 / 50 },
+  { label: '1/45x', value: 1 / 45 },
+  { label: '1/30x', value: 1 / 30 },
   { label: '1/8x（慢動作）', value: 0.125 },
   { label: '1x（真實轉速）', value: 1 },
 ]
 const speed = ref(1 / 60)
 const showArrow = ref(true)
+const showRing = ref(true)
 
 const viewerRef = ref<{ play: () => void, pause: () => void } | null>(null)
 
@@ -61,6 +67,7 @@ const metrics = computed(() => {
         :model-url="asset('/models/baseball_detail.glb')"
         :speed="speed"
         :show-axis-arrow="showArrow"
+        :show-direction-ring="showRing"
       />
     </div>
 
@@ -73,6 +80,7 @@ const metrics = computed(() => {
       </UButton>
       <USelect v-model="speed" :items="speedOptions" size="sm" class="w-48" />
       <USwitch v-model="showArrow" label="轉軸指針" />
+      <USwitch v-model="showRing" label="方向環" />
     </div>
 
     <dl v-if="metrics.length" class="grid grid-cols-3 gap-3 text-sm">
