@@ -1,5 +1,5 @@
-import type { PitchPose3d, RawPitchOutcome } from '~/components/pitch-pose/core/parsePitchOutcome'
-import { parsePitchOutcome } from '~/components/pitch-pose/core/parsePitchOutcome'
+import type { PitchPose3d, RawPitchOutcome } from '~/components/pitch-pose-data/core/parsePitchOutcome'
+import { parsePitchOutcome } from '~/components/pitch-pose-data/core/parsePitchOutcome'
 
 // pose3d 樣本的讀取＋播放時鐘：pitch-pose 的骨架版與真人版共用。
 // 250fps 高速攝影約 3 秒，用 rAF 時鐘驅動，預設 0.25× 慢速播放。
