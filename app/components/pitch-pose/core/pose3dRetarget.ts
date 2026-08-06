@@ -10,7 +10,7 @@ import type { Object3D } from 'three'
  *
  * COCO-17 沒有的資訊(手腕/腳踝旋轉、脊椎逐節彎曲)保持模型 rest pose。
  */
-import type { Pose3dFrame } from './parsePitchOutcome'
+import type { Pose3dFrame } from '../../pitch-pose-data/core/parsePitchOutcome'
 import { Matrix4, Quaternion, Vector3 } from 'three'
 
 /** COCO-17 keypoint id(順序同 types/api/pose 的 COCO_KEYPOINT_NAMES)。 */

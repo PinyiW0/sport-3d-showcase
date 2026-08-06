@@ -1,14 +1,17 @@
 <script setup lang="ts">
+import Pose3dSkeletonPlotly from '~/components/pitch-pose-plotly/Pose3dSkeleton.vue'
 import Pose3dHuman from '~/components/pitch-pose/Pose3dHuman.vue'
 import Pose3dSkeleton from '~/components/pitch-pose/Pose3dSkeleton.vue'
 import { POSE3D_RATES, usePose3dClip } from '~/composables/usePose3dClip'
 
-// pitch-pose 模組驗證頁：真人模型（three.js retarget）與骨架點線圖（Plotly）並可切換，
+// pitch-pose 模組驗證頁：真人模型（three.js retarget）與骨架點線圖三版可切換，
 // 對照同一份 outcome.json 的 COCO-17 3D 重建結果。
+// 骨架保留 Plotly 版並列比對：渲染器換掉後軸刻度、視角行為是否等價，靠這個切換看得最快。
 
 const VIEW_MODES = [
   { value: 'human', label: '真人模型（three.js）' },
-  { value: 'skeleton', label: '骨架（Plotly）' },
+  { value: 'skeleton', label: '骨架（Three.js）' },
+  { value: 'skeleton-plotly', label: '骨架（Plotly 對照）' },
 ] as const
 const viewMode = ref<(typeof VIEW_MODES)[number]['value']>('human')
 
@@ -53,7 +56,9 @@ function onScrub(event: Event) {
           class="mb-3"
         />
         <Pose3dHuman v-if="viewMode === 'human'" :frames="pitch.frames" :time-ms="clockMs" :height="520" />
-        <Pose3dSkeleton v-else :frames="pitch.frames" :time-ms="clockMs" :height="520" />
+        <Pose3dSkeleton v-else-if="viewMode === 'skeleton'" :frames="pitch.frames" :time-ms="clockMs" :height="520" />
+        <!-- v-else 而非常駐：不切到這個 tab 就不會觸發 plotly 的 dynamic import -->
+        <Pose3dSkeletonPlotly v-else :frames="pitch.frames" :time-ms="clockMs" :height="520" />
       </div>
 
       <div class="flex flex-wrap items-center gap-4 border border-neutral-200 p-4 dark:border-neutral-700">

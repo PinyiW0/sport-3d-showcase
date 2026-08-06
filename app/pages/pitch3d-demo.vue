@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import PitchTrajectoryChartPlotly from '~/components/pitch-trajectory-plotly/PitchTrajectoryChart.vue'
 import PitchTrajectoryChart from '~/components/pitch-trajectory/PitchTrajectoryChart.vue'
 
 // pitch-trajectory 模組驗證頁：25 球逐球檢視 3D 軌跡。
 // 九宮格為固定 175cm 標準框（後端資料不含打者身高），可拖曳旋轉視角。
+// 渲染器可切 Three.js／Plotly 對照：換掉渲染器後軌跡形狀、本壘板與九宮格是否等價，
+// 靠並列比對看得最快。
 
 const { pitches, error } = useBt3dSamples()
 
@@ -15,6 +18,12 @@ const zoomOptions = [
   { label: '0.8x（拉近）', value: 0.8 },
   { label: '1x（預設）', value: 1 },
   { label: '1.3x（拉遠）', value: 1.3 },
+]
+
+const renderer = ref<'three' | 'plotly'>('three')
+const rendererOptions = [
+  { label: 'Three.js', value: 'three' as const },
+  { label: 'Plotly 對照', value: 'plotly' as const },
 ]
 </script>
 
@@ -29,7 +38,10 @@ const zoomOptions = [
           點選左側任一球，右側顯示該球 3D 軌跡與本壘板、九宮格。
         </p>
       </div>
-      <USelect v-model="zoom" :items="zoomOptions" size="sm" class="w-40" />
+      <div class="flex items-center gap-2">
+        <USelect v-model="renderer" :items="rendererOptions" size="sm" class="w-36" />
+        <USelect v-model="zoom" :items="zoomOptions" size="sm" class="w-40" />
+      </div>
     </div>
 
     <UAlert
@@ -65,6 +77,15 @@ const zoomOptions = [
         <!-- 圖表為暗色主題，容器同步壓深避免黑圖貼白框 -->
         <div class="overflow-x-auto bg-neutral-950 p-4">
           <PitchTrajectoryChart
+            v-if="renderer === 'three'"
+            :trajectory="trajectory"
+            :zoom="zoom"
+            :width="640"
+            :height="480"
+          />
+          <!-- v-else 而非常駐：不切到對照版就不會觸發 plotly 的 dynamic import -->
+          <PitchTrajectoryChartPlotly
+            v-else
             :trajectory="trajectory"
             :zoom="zoom"
             :width="640"

@@ -23,10 +23,19 @@ const COMPONENTS_DIR = 'app/components'
 const RUNTIME_ALLOWED_ALL = ['vue']
 
 // 各模組額外允許的 npm 套件（含 subpath，如 three/addons/… 由 three 放行）
+// 渲染器分家：<模組>-data 是渲染器無關的資料層，<模組> 是 Three.js 版，
+// <模組>-plotly 是 Plotly 對照版。要哪一版就整包搬那個資料夾 + 對應的 -data。
 const RUNTIME_ALLOWED = {
   'baseball-spin': ['three', 'zod'],
-  'pitch-pose': ['three', 'plotly.js-dist-min'],
-  'pitch-trajectory': ['plotly.js-dist-min'],
+  // scene3d 是各 Three.js 版模組共用的樣板層，無對外元件
+  'scene3d': ['three'],
+  // 資料層零 npm 依賴（連 vue 都不用），純 TS 才能被兩種渲染器共用
+  'pitch-pose-data': [],
+  'pitch-pose': ['three'],
+  'pitch-pose-plotly': ['plotly.js-dist-min'],
+  'pitch-trajectory-data': [],
+  'pitch-trajectory': ['three'],
+  'pitch-trajectory-plotly': ['plotly.js-dist-min'],
 }
 
 // 測試檔專用：測試不隨模組進入執行期，放寬到測試框架與讀 fixture 的 node 內建模組

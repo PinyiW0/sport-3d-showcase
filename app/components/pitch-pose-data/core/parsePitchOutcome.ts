@@ -5,7 +5,7 @@
  *   - key = COCO-17 keypoint id("0"~"16"),定義同 mmpose COCO
  *     (https://mmpose.readthedocs.io/en/latest/dataset_zoo/2d_body_keypoint.html#coco),
  *     與 app/types/api/pose.ts 的 COCO_KEYPOINT_NAMES / SKELETON_EDGES 一致。
- *   - position 單位 cm,座標系同 usePitch3d:x 左右、y 投手方向距離、z 高度。
+ *   - position 單位 cm,座標系同軌跡模組:x 左右、y 投手方向距離、z 高度。
  *   - 實測 749/749 frames 都有 pose_3d,缺測 keypoint 約 0.5%(以 null 佔位)。
  *
  * 時間軸:取第一個 frame 的 timestamp 為 0,輸出相對毫秒

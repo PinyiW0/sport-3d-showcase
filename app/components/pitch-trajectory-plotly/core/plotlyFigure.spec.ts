@@ -1,40 +1,14 @@
 import { describe, expect, it } from 'vitest'
+import { buildStrikeZoneCorners } from '../../pitch-trajectory-data/core/trajectoryGeometry'
 import {
-  buildStrikeZoneCorners,
   createChartLayout,
   createHomePlateTrace,
   createStrikeZoneTraces,
   createTrajectoryTraces,
-  parsePitchTrajectory,
-  PLATE_HALF_WIDTH_CM,
-} from './usePitch3d'
-
-describe('parsePitchTrajectory', () => {
-  it('extracts [x, y, z] tuples and drops extra fields', () => {
-    const result = parsePitchTrajectory({ pitch_trajectory: [[1, 2, 3, 99], [4, 5, 6]] })
-    expect(result).toEqual([[1, 2, 3], [4, 5, 6]])
-  })
-
-  it('filters malformed rows and tolerates non-array input', () => {
-    expect(parsePitchTrajectory({ pitch_trajectory: [[1, 2], [1, Number.NaN, 3], [7, 8, 9]] }))
-      .toEqual([[7, 8, 9]])
-    expect(parsePitchTrajectory({ pitch_trajectory: null as never })).toEqual([])
-  })
-})
-
-describe('buildStrikeZoneCorners', () => {
-  it('derives top/bottom from batter height and puts all corners on the given y plane', () => {
-    const corners = buildStrikeZoneCorners(175, 21.59)
-    // 順序:左上 → 右上 → 右下 → 左下
-    expect(corners[0]).toEqual([-PLATE_HALF_WIDTH_CM, 21.59, 0.535 * 175])
-    expect(corners[1]).toEqual([PLATE_HALF_WIDTH_CM, 21.59, 0.535 * 175])
-    expect(corners[2]).toEqual([PLATE_HALF_WIDTH_CM, 21.59, 0.27 * 175])
-    expect(corners[3]).toEqual([-PLATE_HALF_WIDTH_CM, 21.59, 0.27 * 175])
-  })
-})
+} from './plotlyFigure'
 
 describe('createTrajectoryTraces', () => {
-  it('returns line + start + end traces marking the trajectory endpoints', () => {
+  it('回傳軌跡線 + 出手點 + 入壘點三條 trace，標出軌跡端點', () => {
     const [line, start, end] = createTrajectoryTraces([[0, 1500, 180], [10, 700, 150], [15, 21.59, 93]])
     expect(line.x).toEqual([0, 10, 15])
     expect(start.x).toEqual([0])
@@ -45,7 +19,7 @@ describe('createTrajectoryTraces', () => {
 })
 
 describe('createHomePlateTrace', () => {
-  it('builds a closed pentagon solid: 10 vertices and 16 triangle faces', () => {
+  it('轉成 mesh3d 格式：10 個頂點、16 個三角面', () => {
     const plate = createHomePlateTrace(3)
     expect(plate.x).toHaveLength(10)
     expect(plate.i).toHaveLength(16) // 3 頂面 + 3 底面 + 5 邊 × 2
@@ -56,7 +30,7 @@ describe('createHomePlateTrace', () => {
 })
 
 describe('createStrikeZoneTraces', () => {
-  it('keeps every line on the zone y plane and closes the outline', () => {
+  it('所有線都在好球帶的 y 平面上，外框閉合', () => {
     const corners = buildStrikeZoneCorners(175, 21.59)
     const [outline, grid] = createStrikeZoneTraces(corners)
     expect(new Set(outline.y)).toEqual(new Set([21.59]))
@@ -69,14 +43,14 @@ describe('createStrikeZoneTraces', () => {
 })
 
 describe('createChartLayout', () => {
-  it('expands the y axis to cover the full trajectory', () => {
+  it('y 軸範圍拉開到涵蓋完整軌跡', () => {
     const layout = createChartLayout([[0, 1587, 186], [15, 21.59, 93]])
     const { scene } = layout
     expect(scene.yaxis.range[1]).toBeGreaterThanOrEqual(1587)
     expect(scene.zaxis.range[1]).toBeGreaterThanOrEqual(186)
   })
 
-  it('keeps aspectratio proportional to axis ranges so 1cm renders equally on all axes', () => {
+  it('aspectratio 與軸範圍等比，1cm 在三軸的視覺長度一致', () => {
     const layout = createChartLayout([[0, 1587, 186], [15, 21.59, 93]])
     const { scene } = layout
     const spanY = scene.yaxis.range[1]! - scene.yaxis.range[0]!
