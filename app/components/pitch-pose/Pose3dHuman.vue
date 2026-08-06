@@ -7,7 +7,7 @@
  * 與 Plotly 版不同,OrbitControls 的視角操作和資料更新天生解耦,
  * 播放中拖曳旋轉不需要任何 workaround。
  */
-import type { Pose3dFrame } from './core/parsePitchOutcome'
+import type { Pose3dFrame } from '../pitch-pose-data/core/parsePitchOutcome'
 import {
   Box3,
   Color,
@@ -20,10 +20,12 @@ import {
   Vector3,
   WebGLRenderer,
 } from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+// 路徑統一走 three/addons/（同 baseball-spin 與 scene3d）：與 three/examples/jsm/
+// 混用會讓 Vite 各自預打包，同頁載入兩份 three core，觸發 "Multiple instances" 警告
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { findPoseFrame } from './core/findPoseFrame'
+import { findPoseFrame } from '../pitch-pose-data/core/findPoseFrame'
 import {
   interpolateMissingPoints,
   medianLegLengthM,

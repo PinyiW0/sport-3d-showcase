@@ -186,7 +186,7 @@ gh pr view --web                   # 開瀏覽器
 
 ### 7. 收尾
 
-回報 PR URL。若為本模板衍生專案，另提醒一句：PR 會觸發 CI —— `pull_request.yml` 跑 build + eslint；若改到 `app/`、`server/` 還會跑 `sdd-review.yml` 的 AI 語意審查。非模板 repo（無這些 workflow）就不提。
+回報 PR URL。若為本模板衍生專案，另提醒一句：PR 會觸發 CI —— `pull_request.yml` 跑 build + eslint。非模板 repo（無此 workflow）就不提。
 
 ## 注意
 

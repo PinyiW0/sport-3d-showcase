@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import type { Point3D } from './core/usePitch3d'
-import { PLATE_HALF_WIDTH_CM, usePitch3D } from './core/usePitch3d'
-
+import type { Point3D } from '../pitch-trajectory-data/core/trajectoryGeometry'
 /**
- * 3D 投球軌跡圖（模組唯一對外元件）。
- * 可攜性約束：內部只用相對 import、不用 NuxtUI；plotly 於 onMounted 內 dynamic import
- * （SSR 安全、且不進 server bundle）。
- * - trajectory 變動時會用 Plotly.react 重畫，不需重建元件
- * - 九宮格的 y 平面取軌跡最後一點（入壘點）的 y
+ * 3D 投球軌跡圖（three.js，模組唯一對外元件）。
+ *
+ * 本元件只是薄殼：場景邏輯全在 core/trajectoryScene.ts（框架無關的 class），
+ * 換到 React／Svelte 只要重寫這 50 行。three 於 onMounted 內動態 import，
+ * SSR 安全且不進 server bundle。
+ *
+ * Plotly 對照版在 ../pitch-trajectory-plotly/，props 介面相同可直接互換。
  */
+import type { TrajectoryScene } from './core/trajectoryScene'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+
 const props = withDefaults(defineProps<{
   /** 軌跡點 [x, y, z](cm),即 analysis_result.json 的 pitch_trajectory */
   trajectory: Point3D[]
@@ -27,61 +30,46 @@ const props = withDefaults(defineProps<{
   zoom: 1,
 })
 
-const {
-  buildStrikeZoneCorners,
-  createTrajectoryTraces,
-  createHomePlateTrace,
-  createStrikeZoneTraces,
-  createChartLayout,
-} = usePitch3D()
+const hostRef = ref<HTMLDivElement | null>(null)
+let scene: TrajectoryScene | null = null
 
-const chartRef = ref<HTMLDivElement | null>(null)
-let plotly: typeof import('plotly.js-dist-min') | null = null
-
-function buildFigure() {
-  const yPlane = props.trajectory.at(-1)?.[1] ?? PLATE_HALF_WIDTH_CM
-  const corners = buildStrikeZoneCorners(props.batterHeightCm, yPlane)
-  const traces = [
-    ...createTrajectoryTraces(props.trajectory),
-    createHomePlateTrace(),
-    ...createStrikeZoneTraces(corners),
-  ]
-  const layout = createChartLayout(props.trajectory, {
-    width: props.width,
-    height: props.height,
+onMounted(async () => {
+  if (!hostRef.value)
+    return
+  const { TrajectoryScene } = await import('./core/trajectoryScene')
+  scene = new TrajectoryScene(hostRef.value, {
+    batterHeightCm: props.batterHeightCm,
     zoom: props.zoom,
     cameraEye: props.cameraEye,
   })
-  return { traces, layout }
-}
-
-async function render() {
-  if (!plotly || !chartRef.value || props.trajectory.length < 2) {
-    return
-  }
-  const { traces, layout } = buildFigure()
-  await plotly.react(chartRef.value, traces, layout, { displaylogo: false })
-}
-
-onMounted(async () => {
-  plotly = await import('plotly.js-dist-min')
-  await render()
+  scene.setTrajectory(props.trajectory)
 })
 
-watch(() => [props.trajectory, props.batterHeightCm, props.zoom, props.cameraEye], render, { deep: true })
+// 視角與身高變動要重建場景內容才會生效，統一走 setOptions + setTrajectory
+watch(
+  () => [props.trajectory, props.batterHeightCm, props.zoom, props.cameraEye],
+  () => {
+    scene?.setOptions({
+      batterHeightCm: props.batterHeightCm,
+      zoom: props.zoom,
+      cameraEye: props.cameraEye,
+    })
+    scene?.setTrajectory(props.trajectory)
+  },
+  { deep: true },
+)
 
 onBeforeUnmount(() => {
-  if (plotly && chartRef.value) {
-    plotly.purge(chartRef.value)
-  }
+  scene?.dispose()
+  scene = null
 })
 </script>
 
 <template>
   <div class="mx-auto flex w-full flex-col items-center justify-center">
     <div
-      ref="chartRef"
-      class="w-full"
+      ref="hostRef"
+      :style="{ width: `${props.width}px`, height: `${props.height}px` }"
       data-testid="pitch3d-chart"
     />
   </div>

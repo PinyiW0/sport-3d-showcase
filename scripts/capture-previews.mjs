@@ -9,6 +9,8 @@
  *   PREVIEW_BASE_URL=http://localhost:3004 npm run capture:previews
  *
  * 只改了一個模組時務必指定 slug——全部重錄會讓其他模組的 webm 產生無謂的 diff。
+ * 例外：動到 SIZE / SCALE / CRF 這類輸出規格時要全部重錄，否則卡片牆上會出現
+ * 有的清晰、有的模糊的混搭。
  *
  * 錄的是 /preview/[slug]（只渲染呈現本體、不含控制列），錄完用 ffmpeg 裁掉載入片頭。
  * 新增模組時，先讓該 slug 在 preview 頁渲染得出來，再把 slug 加進下面的 MODULES。
@@ -29,14 +31,28 @@ const OUT_DIR = join(ROOT, 'public/previews')
 const TMP_DIR = join(ROOT, 'node_modules/.cache/preview-capture')
 
 const BASE_URL = process.env.PREVIEW_BASE_URL ?? 'http://localhost:3000'
-const SIZE = { width: 480, height: 300 }
+/** preview 頁的基準尺寸（16:10，對齊卡片的 aspect-16/10）。 */
+const BASE_SIZE = { width: 480, height: 300 }
+/**
+ * 輸出倍率。卡片在版面上約 520px 寬，Retina（dpr 2）下等於 1040 實體像素，
+ * 480 寬的素材會被放大兩倍以上，hover 播放時糊得很明顯。
+ *
+ * 三處必須一致：viewport 尺寸、`recordVideo.size`、preview 頁的 `?scale=`。
+ * - viewport 要放大：Playwright 的 `recordVideo.size` 只會把畫面縮小塞進指定
+ *   尺寸、不會放大，viewport 沒跟著放大就會錄出「畫面在左上角、其餘補灰」
+ * - `?scale=` 讓頁面用 CSS zoom 放大，3D 元件的 clientWidth 維持 480，
+ *   線寬（像素單位）相對畫面的比例才不會被稀釋
+ * - deviceScaleFactor 讓 canvas buffer 跟著加倍，zoom 放大後才不會糊
+ */
+const SCALE = 2
+const SIZE = { width: BASE_SIZE.width * SCALE, height: BASE_SIZE.height * SCALE }
 
 /** 每段錄影長度（毫秒）。bt3d 輪播 500ms/球，4 秒約看到 8 球。 */
 const RECORD_MS = 4000
 /**
  * 內容就緒後、開始錄之前的緩衝：讓 3D 場景把第一幀畫穩。
- * 1600 而非 800——ready 只表示資料到手，SwiftShader 軟體渲染下 Plotly 的
- * gl3d 還要再畫上一秒，太早截圖會拍到全空的畫布。
+ * 1600 而非 800——ready 只表示資料到手，SwiftShader 軟體渲染下 WebGL 場景
+ * 還要再畫上一秒，太早截圖會拍到全空的畫布。
  */
 const SETTLE_MS = 1600
 
@@ -51,8 +67,8 @@ const MODULES = [
 ]
 
 /**
- * headless Chromium 預設拿不到 GPU，WebGL context 會建立失敗——
- * three.js 直接報錯，Plotly 的 scatter3d 也會退成 "WebGL is not supported"。
+ * headless Chromium 預設拿不到 GPU，WebGL context 會建立失敗——three.js 直接報錯
+ * （Plotly 的 scatter3d 也會退成 "WebGL is not supported"）。
  * 用 SwiftShader 走軟體渲染補上（慢但畫得出來）。
  */
 const WEBGL_ARGS = [
@@ -70,12 +86,10 @@ const HIDE_DEVTOOLS_CSS = `
 `
 
 async function capture(browser, slug) {
-  // deviceScaleFactor 維持 1：SwiftShader 是軟體渲染，2x 等於 4 倍畫素負擔，
-  // 錄出來的幀率會掉到卡頓。480×300 對 96px 縮圖與滿版卡片都夠用。
   const startedAt = Date.now()
   const context = await browser.newContext({
     viewport: SIZE,
-    deviceScaleFactor: 1,
+    deviceScaleFactor: SCALE,
     recordVideo: { dir: TMP_DIR, size: SIZE },
   })
   const page = await context.newPage()
@@ -83,7 +97,8 @@ async function capture(browser, slug) {
   const errors = []
   page.on('pageerror', err => errors.push(err.message))
 
-  await page.goto(`${BASE_URL}/preview/${slug}`, { waitUntil: 'domcontentloaded' })
+  // scale 要與 viewport 的倍率一致，頁面才會鋪滿整個畫布
+  await page.goto(`${BASE_URL}/preview/${slug}?scale=${SCALE}`, { waitUntil: 'domcontentloaded' })
   // 資料 fetch 與 3D 初始化都在 client 端，等元件自己回報就緒
   await page.waitForSelector('[data-preview-ready="true"]', { timeout: 45_000 })
   await page.addStyleTag({ content: HIDE_DEVTOOLS_CSS })
@@ -122,7 +137,9 @@ async function capture(browser, slug) {
 
 /**
  * 裁掉片頭並重新編碼成乾淨的循環素材。
- * -ss 放在 -i 前面是輸入端 seek（快），VP9 + CRF 34 讓幾秒的小畫面壓得夠小。
+ * -ss 放在 -i 前面是輸入端 seek（快）。
+ * CRF 30 而非 34：解析度拉到 2x 後，34 的量化雜訊在細線條（骨架、九宮格、軸刻度）
+ * 上很明顯，等於白做了解析度。30 換來的檔案增量對幾秒的小片段可以接受。
  */
 async function trimHead(input, output, startSec) {
   await run(ffmpegPath, [
@@ -134,7 +151,7 @@ async function trimHead(input, output, startSec) {
     '-c:v',
     'libvpx-vp9',
     '-crf',
-    '34',
+    '30',
     '-b:v',
     '0',
     '-an', // 沒有音軌

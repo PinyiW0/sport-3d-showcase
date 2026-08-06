@@ -2,8 +2,9 @@ import type { ModuleSpec } from './types'
 import { defineAsyncComponent } from 'vue'
 
 // 全部 3D 研究模組的登錄表。索引頁與展示頁都讀這裡。
-// done  = 研究告一段落（baseball-spin、pitch-pose-skeleton、pitch-trajectory）
-// wip   = 有可運作實作可點進去看，但還在調整
+// done  = 研究告一段落（baseball-spin、clock-spin、pitch-pose-skeleton、
+//         pitch-trajectory、strike-zone-grid、pitch-distribution）
+// wip   = 有可運作實作可點進去看，但還在調整（pitch-pose-human）
 // planned = 尚未動工，四個必備區塊先給文字輪廓、參考資料選填
 
 // baseball-spin 樣本（後端 result.json 原格式，snake_case；取自 public/samples/spin/sample1）
@@ -115,7 +116,7 @@ export const modules: ModuleSpec[] = [
     slug: 'clock-spin',
     title: '時鐘轉軸',
     sport: 'baseball',
-    status: 'wip',
+    status: 'done',
     summary: '把 spin_tilt 以 2D 時鐘面板呈現：盤面靜態、指針整組 rotate(spin_tilt.degrees)。與 baseball-spin 的 3D 指針是同一份資料的兩種呈現。',
     tags: ['SVG', '2D', 'spin-tilt'],
     updated: '2026-07',
@@ -155,40 +156,44 @@ export const modules: ModuleSpec[] = [
     title: '投球姿態 3D 骨架',
     sport: 'baseball',
     status: 'done',
-    summary: '把多鏡位重建的 COCO-17 骨架逐幀播放，用 Plotly scatter3d 畫點線圖；軸範圍與視角固定，播放中空間不會跟著資料「呼吸」、拖曳過的視角也不被重設。',
-    tags: ['Plotly', 'pose', 'skeleton', 'COCO-17'],
-    updated: '2026-07',
+    summary: '把多鏡位重建的 COCO-17 骨架逐幀播放，用 Three.js 畫點線圖；軸範圍固定，播放中空間不會跟著資料「呼吸」，且播放與視角操作天生解耦——拖曳旋轉不會被每秒 60 次的重繪打斷。',
+    tags: ['Three.js', 'pose', 'skeleton', 'COCO-17'],
+    updated: '2026-08',
     demoRoute: '/pose3d-demo',
     presentation: defineAsyncComponent(() => import('~/components/modules/PitchPoseSkeletonShowcase.vue')),
     tech: [
-      'Plotly.js（plotly.js-dist-min，scatter3d）',
+      'Three.js（Line2 骨頭 + InstancedMesh 關節 + 自繪 3D 軸盒）',
       'COCO-17 骨架拓樸（19 條骨頭）',
       'rAF 播放時鐘（0.05–1× 可調）',
       'Vue 3 / Nuxt 4',
     ],
     data: {
       summary: '單球約 3 秒、250fps 的多鏡位 3D 重建骨架：每幀 17 個 COCO keypoint 的世界座標（cm），外加出手瞬間的 frame index。',
-      format: 'PitchPose3d（core/parsePitchOutcome.ts；wire 為 outcome.json 的 clip.frames[].reconstruction.pose_3d）',
+      format: 'PitchPose3d（pitch-pose-data/core/parsePitchOutcome.ts；wire 為 outcome.json 的 clip.frames[].reconstruction.pose_3d）',
       sample: POSE3D_SAMPLE,
       sampleUrl: 'public/samples/pose3d/outcome.json（749 frames，0.7MB）',
     },
     handoff: {
       files: [
-        'app/components/pitch-pose/（整包 cp 即可，含單元測試；骨架版最小集是 Pose3dSkeleton.vue + core/{parsePitchOutcome,findPoseFrame,types}.ts）',
+        '要 Three.js 版 → app/components/pitch-pose/ + pitch-pose-data/ + scene3d/',
+        '要 Plotly 版 → app/components/pitch-pose-plotly/ + pitch-pose-data/ + app/types/plotly.d.ts（不需要 scene3d）',
+        'app/components/pitch-pose-data/（渲染器無關的資料層：outcome 解析、時間軸查找、COCO 拓樸、軸範圍，含單元測試）',
         'app/composables/usePose3dClip.ts（樣本載入 + 播放時鐘）',
         'public/samples/pose3d/outcome.json',
-        'app/types/plotly.d.ts（plotly.js-dist-min 沒附型別）',
       ],
-      dependencies: ['Nuxt 4（元件靠 auto-import 取得 ref/onMounted 等，非 Nuxt 環境需自行補 import）', 'plotly.js-dist-min', 'tailwindcss（元件的 class 樣式）'],
+      dependencies: ['Nuxt 4（元件靠 auto-import 取得 ref/onMounted 等，非 Nuxt 環境需自行補 import）', 'three（Three.js 版）', '@types/three（dev）', 'plotly.js-dist-min（Plotly 版）', 'tailwindcss（元件的 class 樣式）', '資料層 pitch-pose-data 零 npm 依賴'],
       flexPoints: [
-        '骨架顏色 color、畫布高度 height',
+        '骨架顏色 color、畫布高度 height、深色畫布 dark',
         '播放速率（usePose3dClip 的 rate，預設 0.25×）',
         '資料空洞容忍值 DEFAULT_MAX_GAP_MS（預設 250ms）',
         '骨架拓樸 SKELETON_EDGES（core/types.ts，換 keypoint 定義時改這裡）',
+        '空間留白與圓整（pitch-pose-data/core/skeletonBounds.ts 的 PAD_CM / STEP_CM）',
+        '軸盒刻度密度與配色（scene3d/core/axisBox.ts 的 chooseTickStep 與 AXIS_THEME）',
       ],
     },
     references: [
       { label: 'COCO-17 keypoint 定義（mmpose）', href: 'https://mmpose.readthedocs.io/en/latest/dataset_zoo/2d_body_keypoint.html#coco' },
+      { label: '同頁可切 Plotly 對照版：換渲染器後軸刻度與視角行為是否等價，並列比對最快' },
     ],
   },
   {
@@ -238,7 +243,7 @@ export const modules: ModuleSpec[] = [
     status: 'planned',
     summary: '以 3D 骨架重建打者揮棒姿態，供逐關節檢視與角度量測。渲染與播放層可直接複用 pitch-pose 系列，差別在資料來源是打者而非投手。',
     tags: ['pose', 'skeleton', 'batting'],
-    tech: ['沿用 pitch-pose 的 Plotly／Three.js 骨架渲染', '打者姿態估計輸出解析'],
+    tech: ['沿用 pitch-pose 的 Three.js 骨架渲染（PoseSkeletonScene + scene3d 軸盒）', '打者姿態估計輸出解析'],
     data: {
       summary: '每影格關節 3D 座標（世界座標）與骨架連結；需一致的座標系與揮棒事件（觸球瞬間）定義。',
       format: '（規劃中）預期同 PitchPose3d，事件欄位由出手改為揮棒／觸球',
@@ -256,50 +261,53 @@ export const modules: ModuleSpec[] = [
     title: '來球 3D 軌跡圖',
     sport: 'baseball',
     status: 'done',
-    summary: '用 Plotly 在同一個 3D 場景畫出投球軌跡、本壘板實體與好球帶九宮格；採暗色主題，軸範圍則依軌跡動態換算成等比例，1cm 在三軸的視覺長度一致、空間不變形。',
-    tags: ['Plotly', 'trajectory', '3D', 'mesh3d'],
-    updated: '2026-07',
+    summary: '用 Three.js 在同一個 3D 場景畫出投球軌跡、本壘板實體與好球帶九宮格；採暗色主題，世界單位直接是 cm，1cm 在三軸的視覺長度天生一致、空間不變形。',
+    tags: ['Three.js', 'trajectory', '3D', 'strike-zone'],
+    updated: '2026-08',
     demoRoute: '/pitch3d-demo',
     presentation: defineAsyncComponent(() => import('~/components/modules/PitchTrajectoryShowcase.vue')),
     tech: [
-      'Plotly.js（plotly.js-dist-min，scatter3d + mesh3d）',
+      'Three.js（Line2 軌跡與九宮格 + BufferGeometry 本壘板 + 自繪 3D 軸盒）',
       '暗色主題（黑底 + 琥珀黃軌跡）',
       '本壘板五邊形自動生成側面與底面',
-      '等比 aspectratio 換算（每 200cm 對應 1 視覺單位）',
+      '世界單位即 cm（不需 Plotly 那套 aspectratio 人工換算）',
       'Vue 3 / Nuxt 4',
     ],
     data: {
       summary: '每球的擬合軌跡點（20 點，cm）與入壘點；好球帶框不在資料裡，由固定 175cm 身高比例推算。',
-      format: 'PitchAnalysisResult（core/usePitch3d.ts；wire 為後端 analysis_result.json 的 snake_case 子集）',
+      format: 'PitchAnalysisResult（pitch-trajectory-data/core/trajectoryGeometry.ts；wire 為後端 analysis_result.json 的 snake_case 子集）',
       sample: BT3D_SAMPLE,
       sampleUrl: 'public/samples/bt3d/pitches.json（25 球合併，18KB）',
     },
     handoff: {
       files: [
-        'app/components/pitch-trajectory/（整包 cp，含 core/ 純 TS 零 Vue 依賴與其單元測試）',
-        'app/components/baseball-field/（場地與好球帶常數的單一來源，必須一併帶走）',
+        '要 Three.js 版 → app/components/pitch-trajectory/ + pitch-trajectory-data/ + scene3d/ + baseball-field/',
+        '要 Plotly 版 → app/components/pitch-trajectory-plotly/ + pitch-trajectory-data/ + baseball-field/ + app/types/plotly.d.ts（不需要 scene3d）',
+        'app/components/pitch-trajectory-data/（渲染器無關的資料層：軌跡解析、場地幾何、軸範圍、配色，含單元測試）',
+        'app/components/baseball-field/（場地與好球帶常數的單一來源，資料層直接相依）',
         'app/composables/useBt3dSamples.ts（樣本讀取，與 strike-zone-grid 共用）',
         'public/samples/bt3d/pitches.json',
-        'app/types/plotly.d.ts（plotly.js-dist-min 沒附型別）',
       ],
-      dependencies: ['Nuxt 4（元件靠 auto-import 取得 ref/onMounted 等，非 Nuxt 環境需自行補 import）', 'plotly.js-dist-min', 'tailwindcss（元件的 class 樣式）'],
+      dependencies: ['Nuxt 4（元件靠 auto-import 取得 ref/onMounted 等，非 Nuxt 環境需自行補 import）', 'three（Three.js 版）', '@types/three（dev）', 'plotly.js-dist-min（Plotly 版）', 'tailwindcss（元件的 class 樣式）', '資料層 pitch-trajectory-data 零 npm 依賴'],
       flexPoints: [
         '相機距離 zoom（>1 拉遠、<1 放大）與完整視角覆寫 cameraEye',
         '打者身高 batterHeightCm（推算九宮格上下緣，預設 175）',
-        '畫布 width／height（Plotly 需固定尺寸）',
-        '整套配色集中在 core/usePitch3d.ts 的 CHART_THEME（換主題只動這一組常數）',
+        '畫布 width／height',
+        '整套配色集中在 pitch-trajectory-data/core/trajectoryGeometry.ts 的 CHART_THEME（換主題只動這一組常數）',
+        '線寬與標記尺寸（core/trajectoryScene.ts 的 WIDTH_PX / MARKER_RADIUS_CM / PATH_DOT_PX）',
       ],
     },
     references: [
       { label: '座標系：原點為本壘板尖端、y 正向朝投手、單位 cm' },
+      { label: '幾何與配色由 pitch-trajectory-data 供應，Three.js 版與 Plotly 對照版共用同一份計算' },
     ],
   },
   {
     slug: 'strike-zone-grid',
     title: '九宮格落點圖',
     sport: 'baseball',
-    status: 'wip',
-    summary: '把入壘點投影到好球帶九宮格的純 SVG 呈現，含好壞球幾何判定與本壘板、打擊區的透視底座；縮放為真實比例等比換算，不會把好球帶畫扁。呈現細節仍在調整中。',
+    status: 'done',
+    summary: '把入壘點投影到好球帶九宮格的純 SVG 呈現，含好壞球幾何判定與本壘板、打擊區的透視底座；縮放為真實比例等比換算，不會把好球帶畫扁。',
     tags: ['SVG', 'strike-zone', '2D', '好壞球判定'],
     updated: '2026-07',
     demoRoute: '/bt3d-demo',
@@ -341,7 +349,7 @@ export const modules: ModuleSpec[] = [
     slug: 'pitch-distribution',
     title: '落點分布圖',
     sport: 'baseball',
-    status: 'wip',
+    status: 'done',
     summary: '一批投球在好球帶上的分布：九宮格熱區看集中在哪，散點疊圖看實際散布與框外的球，可依投手與球種篩選。與九宮格落點圖的分工是「這批球」對「這一球」。',
     tags: ['SVG', 'heatmap', 'distribution', '2D'],
     updated: '2026-07',
