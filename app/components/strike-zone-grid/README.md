@@ -2,7 +2,7 @@
 
 > 25 球資料合併成單一 `pitches.json` 靜態檔(不用 build-time glob)。
 
-2D 好球帶九宮格落點圖:列出所有投球,點選任一球後在捕手視角的好球帶框中顯示落點,並判定好球/壞球。
+2D 好球帶九宮格落點圖:列出所有投球,點選任一球後在投手視角的好球帶框中顯示落點,並判定好球/壞球。
 
 ## 相關檔案
 
@@ -43,7 +43,7 @@ plate_half_width = 0.708 ft(21.59 cm,17 吋本壘板半寬)
 
 **2. 世界座標 → SVG 座標(`useStrikeZoneScale.ts:146-149`)**
 
-捕手視角需左右鏡像(X 軸反轉),SVG 原點在左上所以 Y 軸也反轉:
+投手視角需左右鏡像(X 軸反轉,世界 +X=一壘側顯示在畫面左側),SVG 原點在左上所以 Y 軸也反轉:
 
 ```ts
 toSvg(px, pz) = {
@@ -73,7 +73,7 @@ isStrike(pitch)  = pitch.is_strike ?? isInZone(pitch.px, pitch.pz)
 純 SVG(`StrikeZone.vue`),無第三方繪圖庫:
 
 - `<rect>` × 9 格 + `<line>` 內線 + `<rect>` 外框
-- 可選裝飾層(`show-field`):本壘板 `<polygon>` 與打者站位框,用單點透視投影生成(`createFieldLayout`,`useStrikeZoneScale.ts:318-388`)
+- 可選裝飾層(`show-field`):本壘板(投手視角,尖角朝上,頂面+前側厚度帶的立體板)與打者站位框,用單點透視投影生成(`createFieldLayout`),並在角落標示「投手視角」
 - 落點 `<circle>`:好球 `fill-primary-500`(綠)、壞球 `fill-error-400`(紅)
 
 ## 資料來源需要的欄位
