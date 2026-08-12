@@ -8,11 +8,13 @@ import {
 import { HOME_PLATE } from './fieldGeometry'
 
 describe('級別資料表', () => {
-  it('代表身高等於該級距各年齡 PR50 的平均', () => {
+  // 代表身高是 PR50 平均經教練校準後的定案值,不是平均本身;校準只允許往上、幅度 1 cm 內
+  it('代表身高不低於該級距各年齡 PR50 的平均,且校準幅度在 1 cm 內', () => {
     for (const key of BATTER_LEVEL_ORDER) {
       const { pr50ByAge, referenceHeightCm, label } = BATTER_LEVELS[key]
       const avg = pr50ByAge.reduce((sum, h) => sum + h, 0) / pr50ByAge.length
-      expect(referenceHeightCm, label).toBeCloseTo(avg, 1)
+      expect(referenceHeightCm, label).toBeGreaterThanOrEqual(avg)
+      expect(referenceHeightCm - avg, label).toBeLessThanOrEqual(1)
     }
   })
 
@@ -38,9 +40,9 @@ describe('級別資料表', () => {
 describe('getStrikeZoneForLevel', () => {
   // 規格文件 §5 的換算表,寫死驗算值而非從常數反推
   const expected = {
-    little: { height: 134.3, bottom: 36.261, top: 71.8505 },
-    junior: { height: 156.5, bottom: 42.255, top: 83.7275 },
-    senior: { height: 169.7, bottom: 45.819, top: 90.7895 },
+    little: { height: 135, bottom: 36.45, top: 72.225 },
+    junior: { height: 157, bottom: 42.39, top: 83.995 },
+    senior: { height: 170, bottom: 45.9, top: 90.95 },
     adult: { height: 172, bottom: 46.44, top: 92.02 },
   } as const
 
@@ -67,7 +69,7 @@ describe('getStrikeZoneForLevel', () => {
       return (z.top - z.bottom) / 3
     }
     const cellW = (HOME_PLATE.halfWidth * 2) / 3
-    expect(cellH('little') / cellW).toBeCloseTo(0.82, 2)
+    expect(cellH('little') / cellW).toBeCloseTo(0.83, 2)
     expect(cellH('adult') / cellW).toBeCloseTo(1.06, 2)
   })
 })
