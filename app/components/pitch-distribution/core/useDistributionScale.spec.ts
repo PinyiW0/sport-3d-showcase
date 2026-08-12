@@ -15,7 +15,7 @@ describe('useDistributionScale', () => {
   })
 
   it('留白會撐到地面以下時,下緣截在 0', () => {
-    // 少棒 bottom 36.26、高 35.59,減完是正的;改用刻意矮的框驗證截斷
+    // 少棒 bottom 36.45、高 35.78,減完是正的;改用刻意矮的框驗證截斷
     const low = useDistributionScale({ left: -21.59, right: 21.59, bottom: 10, top: 60 }).value
     // minZ = max(0, 10 − 50) = 0,maxZ = 60 + 50 = 110
     expect(low.viewHeight).toBeCloseTo(110, 2)

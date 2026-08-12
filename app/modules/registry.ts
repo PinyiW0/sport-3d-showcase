@@ -349,7 +349,7 @@ export const modules: ModuleSpec[] = [
         '格號顯示 show-labels、本壘板與打擊區 show-field',
         '落點半徑 pitch-radius',
         '本壘板半寬 DEFAULT_PLATE_HALF_WIDTH（0.708 ft，MLB 17 吋規格）',
-        '打者級別 BATTER_LEVELS（少棒 134.3／青少棒 156.5／青棒 169.7／成棒 172 cm，只改好球帶上下緣）',
+        '打者級別 BATTER_LEVELS（少棒 135／青少棒 157／青棒 170／成棒 172 cm，只改好球帶上下緣）',
       ],
     },
     references: [
