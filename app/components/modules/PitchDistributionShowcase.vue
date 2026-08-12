@@ -40,13 +40,19 @@ const stats = computed(() => aggregateByCell(filtered.value, zone.value))
 
 const options = computed(() => collectFilterOptions(pitches.value))
 
-// 球種代碼對照，只給顯示用——core 保持純資料，不帶顯示字串
+// 球種代碼對照，只給顯示用——core 保持純資料，不帶顯示字串。
+// 代號與中文名的單一真理來源是 spec/domain/pitch-types.md，查不到的代號顯示裸代號。
 const PITCH_TYPE_LABEL: Record<string, string> = {
-  FF: '四縫線速球',
-  SI: '伸卡球',
-  SL: '滑球',
-  CU: '曲球',
-  CH: '變速球',
+  '4S': '四縫線速球',
+  'SL': '滑球',
+  'CB': '曲球',
+  'CH': '變速球',
+  'SW': '橫掃球',
+  'SK': '伸卡球',
+  'CT': '卡特球',
+  'SP': '指叉球',
+  'KN': '蝴蝶球',
+  'OTH': '其他',
 }
 
 const pitcherOptions = computed(() => [
