@@ -2144,8 +2144,12 @@ components:
           format: uuid
         pitchType:
           type: [string, 'null']
-          description: 由分析產出的球種，例如 Fastball, Slider, Curveball, Changeup 等。isBt3dOnly=true（未配對）時無分析結果，為 null。
-          example: Fastball
+          enum: ['4S', 'SL', 'CB', 'CH', 'SW', 'SK', 'CT', 'SP', 'KN', 'OTH', null]
+          description: >-
+            由演算法判定的球種代號。合法值：4S 四縫線速球、SL 滑球、CB 曲球、CH 變速球、SW 橫掃球、
+            SK 伸卡球、CT 卡特球、SP 指叉球、KN 蝴蝶球、OTH 其他（信心不足或未支援球種的降級輸出）。
+            完整規格見 spec/domain/pitch-types.md。isBt3dOnly=true（未配對）時無分析結果，為 null。
+          example: 4S
         isBt3dOnly:
           type: boolean
           description: 是否為未配對成功、僅有 bt3d 資料的投球
