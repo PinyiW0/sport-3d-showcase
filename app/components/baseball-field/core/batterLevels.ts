@@ -9,6 +9,10 @@
  * 均等,取單一年齡會讓低年級的好球帶整體偏高;取 PR50 而非 PR75,是因為好球帶
  * 要對典型打者成立,不是對高個子。
  *
+ * 上述推導出的平均值再經與業界教練討論後定案為現行的 referenceHeightCm——
+ * 各級皆在平均之上取整、幅度不超過 1 cm。所以代表身高不是 pr50ByAge 平均的
+ * 直接輸出,改 pr50ByAge 時不要順手把代表身高改回算術平均。
+ *
  * 規格見 spec/domain/baseball-field-coordinates.md §5
  */
 
@@ -27,7 +31,7 @@ export interface BatterLevelSpec {
   ages: [number, number]
   /** 各年齡的 PR50 身高(cm),依年齡由小到大 */
   pr50ByAge: readonly number[]
-  /** 代表身高(cm) = pr50ByAge 的平均,四捨五入到 0.1 */
+  /** 代表身高(cm):pr50ByAge 平均經教練校準後的定案值 */
   referenceHeightCm: number
   /** 身高涵蓋範圍(cm) = [最小年齡 PR3, 最大年齡 PR97],供 UI 的身高輸入範圍用 */
   heightRangeCm: [number, number]
@@ -43,7 +47,7 @@ export const BATTER_LEVELS: Record<BatterLevel, BatterLevelSpec> = {
     grades: '小三–小六',
     ages: [8, 11],
     pr50ByAge: [126.8, 131.8, 136.5, 142],
-    referenceHeightCm: 134.3,
+    referenceHeightCm: 135,
     heightRangeCm: [117, 156.1],
   },
   junior: {
@@ -52,7 +56,7 @@ export const BATTER_LEVELS: Record<BatterLevel, BatterLevelSpec> = {
     grades: '國一–國三',
     ages: [12, 14],
     pr50ByAge: [148.8, 156.9, 163.7],
-    referenceHeightCm: 156.5,
+    referenceHeightCm: 157,
     heightRangeCm: [135.6, 176],
   },
   senior: {
@@ -61,7 +65,7 @@ export const BATTER_LEVELS: Record<BatterLevel, BatterLevelSpec> = {
     grades: '高一–高三',
     ages: [15, 17],
     pr50ByAge: [167.6, 170, 171.5],
-    referenceHeightCm: 169.7,
+    referenceHeightCm: 170,
     heightRangeCm: [155.5, 181.5],
   },
   adult: {
