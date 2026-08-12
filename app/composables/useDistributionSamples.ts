@@ -12,7 +12,7 @@ export interface DistributionSample {
   ts: string
   /** 投手識別 */
   pitcher: string
-  /** 球種代碼，如 FF / SI / SL / CU / CH */
+  /** 球種代碼，如 4S / SK / SL / CB / CH，合法值見 spec/domain/pitch-types.md */
   pitch_type: string
   /** 入壘點 [x, y, z]（cm） */
   strike_zone_point: number[]

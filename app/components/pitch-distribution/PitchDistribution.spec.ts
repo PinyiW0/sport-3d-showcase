@@ -8,7 +8,7 @@ import PitchDistribution from './PitchDistribution.vue'
 const zone = getStrikeZone(172)
 
 function pitch(x: number, z: number): DistributionPitch {
-  return { x, z, pitcher: 'P01', pitchType: 'FF' }
+  return { x, z, pitcher: 'P01', pitchType: '4S' }
 }
 
 function render(pitches: DistributionPitch[], props: Record<string, unknown> = {}) {

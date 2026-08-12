@@ -97,7 +97,8 @@ let levelTimer: ReturnType<typeof setInterval> | undefined
 // --- pitch-distribution：分布圖是靜態的,輪播球種當動畫。
 // 這也剛好是這個模組的賣點:同一批球換個球種看,熱區位置就整片移動。
 const { pitches: distributionPitches } = useDistributionSamples()
-const DISTRIBUTION_TYPES: (string | null)[] = [null, 'FF', 'SL', 'CU', 'CH']
+// 挑球數夠多、熱區位置又互相拉開的四種：中間偏高 → 臂側偏低 → 手套側偏低 → 最低
+const DISTRIBUTION_TYPES: (string | null)[] = [null, '4S', 'SK', 'SL', 'CB']
 const distributionIndex = ref(0)
 let distributionTimer: ReturnType<typeof setInterval> | undefined
 
