@@ -81,6 +81,7 @@ Spec-Driven Development：從 Feature 規格驅動開發。
 | 視覺層級 | `spec/ui-config/visual-hierarchy.md` | UI 實作時讀取（feature-to-ui `@` 載入＋ui-conventions 指讀） |
 | 創意方向 | `spec/ui-config/creative-direction.md` | vibe 要求質感/風格/動畫、實作行銷頁 `(marketing)` 時讀取（vibe-ui＋ui-conventions 指讀） |
 | Business Invariants | `spec/e2e-flows/*.flow.md` 開頭段 | Vibe UI 前必讀 |
+| 球種代號與名稱 | `spec/domain/pitch-types.md` | 實作涉及球種的模組、API 合約、樣本資料時必讀 |
 
 ## 專案結構
 
