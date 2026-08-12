@@ -19,7 +19,7 @@ export interface DistributionPitch {
   z: number
   /** 投手識別（後端 pitcher 欄位） */
   pitcher: string
-  /** 球種代碼，如 FF / SL / CU / CH / SI */
+  /** 球種代碼，如 4S / SL / CB / CH / SK，合法值見 spec/domain/pitch-types.md */
   pitchType: string
 }
 

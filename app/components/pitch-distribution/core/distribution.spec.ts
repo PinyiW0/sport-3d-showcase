@@ -11,15 +11,15 @@ import {
 // 成棒代表身高的好球帶:left -21.59 / right 21.59 / bottom 46.44 / top 92.02
 const zone = getStrikeZone(172)
 
-function pitch(x: number, z: number, pitcher = 'P01', pitchType = 'FF'): DistributionPitch {
+function pitch(x: number, z: number, pitcher = 'P01', pitchType = '4S'): DistributionPitch {
   return { x, z, pitcher, pitchType }
 }
 
 describe('filterPitches', () => {
   const pitches = [
-    pitch(0, 70, 'P01', 'FF'),
+    pitch(0, 70, 'P01', '4S'),
     pitch(0, 70, 'P01', 'SL'),
-    pitch(0, 70, 'P02', 'FF'),
+    pitch(0, 70, 'P02', '4S'),
   ]
 
   it('條件全省略時回傳全部', () => {
@@ -31,7 +31,7 @@ describe('filterPitches', () => {
   })
 
   it('依球種篩選', () => {
-    expect(filterPitches(pitches, { pitchType: 'FF' })).toHaveLength(2)
+    expect(filterPitches(pitches, { pitchType: '4S' })).toHaveLength(2)
   })
 
   it('兩個條件同時成立才留下', () => {
@@ -114,11 +114,11 @@ describe('collectFilterOptions', () => {
   it('去重並排序', () => {
     const options = collectFilterOptions([
       pitch(0, 70, 'P02', 'SL'),
-      pitch(0, 70, 'P01', 'FF'),
-      pitch(0, 70, 'P02', 'FF'),
+      pitch(0, 70, 'P01', '4S'),
+      pitch(0, 70, 'P02', '4S'),
     ])
     expect(options.pitchers).toEqual(['P01', 'P02'])
-    expect(options.pitchTypes).toEqual(['FF', 'SL'])
+    expect(options.pitchTypes).toEqual(['4S', 'SL'])
   })
 
   it('空輸入回傳兩個空陣列', () => {

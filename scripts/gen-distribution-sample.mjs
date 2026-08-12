@@ -35,23 +35,29 @@ function gauss(mean, sd) {
 
 const round2 = n => Math.round(n * 100) / 100
 
-// 球種：MLB 代碼慣例（對齊 strike-zone-grid/core/types.ts 的 pitch_type 註解）
+// 球種：代號與參數的單一真理來源是 spec/domain/pitch-types.md，改這裡要同步改那份
 // cx/cz = 落點中心（cm，cz 為離地高度）；sx/sz = 散度；velo = 球速中心與散度
+// cx 假設右投手：臂側跑動朝三壘側（負），手套側位移朝一壘側（正）
 const PITCH_TYPES = {
-  FF: { cx: 0, cz: 80, sx: 12, sz: 14, velo: [138, 6] }, // 四縫線速球，偏高
-  SI: { cx: -8, cz: 58, sx: 13, sz: 13, velo: [132, 6] }, // 伸卡，偏低
-  SL: { cx: 11, cz: 55, sx: 14, sz: 15, velo: [124, 5] }, // 滑球，偏低且橫移
-  CU: { cx: -2, cz: 45, sx: 13, sz: 18, velo: [116, 5] }, // 曲球，明顯偏低、縱向散度大
-  CH: { cx: 5, cz: 52, sx: 14, sz: 14, velo: [121, 5] }, // 變速球，偏低
+  '4S': { cx: 0, cz: 80, sx: 12, sz: 14, velo: [138, 6] }, // 四縫線速球，基準球種、偏高
+  'SK': { cx: -9, cz: 56, sx: 13, sz: 13, velo: [132, 6] }, // 伸卡球，臂側跑動且下沉
+  'CT': { cx: 6, cz: 68, sx: 12, sz: 13, velo: [133, 5] }, // 卡特球，小幅切入、球速接近速球
+  'SL': { cx: 11, cz: 55, sx: 14, sz: 15, velo: [124, 5] }, // 滑球，手套側橫移＋下墜
+  'SW': { cx: 18, cz: 58, sx: 16, sz: 14, velo: [121, 5] }, // 橫掃球，橫移約滑球兩倍、下墜較少
+  'CB': { cx: 4, cz: 44, sx: 13, sz: 18, velo: [116, 5] }, // 曲球，大幅下墜、縱向散度最大
+  'CH': { cx: -6, cz: 52, sx: 14, sz: 14, velo: [121, 5] }, // 變速球，臂側偏低、靠速差
+  'SP': { cx: -2, cz: 42, sx: 12, sz: 16, velo: [126, 5] }, // 指叉球，近零橫移的急墜、落點最低
+  'KN': { cx: 0, cz: 60, sx: 22, sz: 22, velo: [105, 7] }, // 蝴蝶球，飄移無方向性、兩軸散度最大
+  'OTH': { cx: 0, cz: 62, sx: 18, sz: 18, velo: [125, 9] }, // 其他，降級桶不代表單一球種、區間寬
 }
 
 // 投手：bias 為個人控球偏移，spread 為散度倍率，veloBias 為球速差
 // mix 的權重決定球種配比——刻意讓部分組合不存在，UI 要能處理空結果
 const PITCHERS = [
-  { id: 'P01', date: '2026-07-20', count: 165, bias: [0, 2], spread: 0.85, veloBias: 0, mix: { FF: 40, SL: 25, CH: 20, CU: 15 } },
-  { id: 'P02', date: '2026-07-22', count: 140, bias: [3, 4], spread: 1.15, veloBias: 4, mix: { FF: 50, SI: 25, SL: 25 } },
-  { id: 'P03', date: '2026-07-24', count: 155, bias: [-5, 0], spread: 1, veloBias: -3, mix: { FF: 35, CU: 30, CH: 35 } },
-  { id: 'P04', date: '2026-07-26', count: 140, bias: [1, -5], spread: 1.05, veloBias: 0, mix: { FF: 30, SI: 30, SL: 25, CU: 15 } },
+  { id: 'P01', date: '2026-07-20', count: 165, bias: [0, 2], spread: 0.85, veloBias: 0, mix: { '4S': 38, 'SL': 24, 'CH': 20, 'CB': 18 } },
+  { id: 'P02', date: '2026-07-22', count: 140, bias: [3, 4], spread: 1.15, veloBias: 4, mix: { '4S': 34, 'SK': 26, 'CT': 22, 'SL': 18 } },
+  { id: 'P03', date: '2026-07-24', count: 155, bias: [-5, 0], spread: 1, veloBias: -3, mix: { '4S': 26, 'CB': 22, 'CH': 22, 'SW': 20, 'OTH': 10 } },
+  { id: 'P04', date: '2026-07-26', count: 140, bias: [1, -5], spread: 1.05, veloBias: 0, mix: { '4S': 28, 'SK': 22, 'SP': 20, 'KN': 18, 'OTH': 12 } },
 ]
 
 /** 依權重抽球種 */

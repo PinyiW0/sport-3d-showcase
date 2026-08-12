@@ -34,7 +34,7 @@ export interface PitchLocation {
   px: number
   /** Height above the ground, in feet. */
   pz: number
-  /** e.g. "FF", "SL", "CH" — optional metadata. */
+  /** e.g. "4S", "SL", "CH" — optional metadata. */
   pitch_type?: string
   /**
    * Whether the pitch is a strike. When omitted the renderer derives it

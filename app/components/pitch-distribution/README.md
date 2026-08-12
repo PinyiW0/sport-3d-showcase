@@ -13,7 +13,7 @@
 | `app/components/pitch-distribution/core/useDistributionScale.ts` | 座標與視野（純 TS + vue 的 computed，有單元測試） |
 | `app/components/baseball-field/core/fieldGeometry.ts` | **本模組的外部依賴**：場地與好球帶常數的單一來源（cm），本模組直接使用同單位。整包 cp 時要一併帶走。規格見 [spec/domain/baseball-field-coordinates.md](../../../spec/domain/baseball-field-coordinates.md) |
 | `app/composables/useDistributionSamples.ts` | 樣本載入（Nuxt 專用，非 Nuxt 環境自行替換） |
-| `public/samples/bt3d/distribution.json` | 樣本（600 球，79KB，**合成資料**） |
+| `public/samples/bt3d/distribution.json` | 樣本（600 球，88KB，**合成資料**） |
 | `scripts/gen-distribution-sample.mjs` | 樣本生成腳本，`npm run gen:sample` 重跑（固定 seed，結果可重現） |
 
 ## 實作方式
@@ -52,10 +52,10 @@
 |------|------|------|------|
 | `strike_zone_point` | `[number, number, number]` | cm | 入壘點 `[x, y, z]`。只用 `[0]`（x）與 `[2]`（z）；`[1]` 恆為 21.59，不使用 |
 | `pitcher` | string | — | 投手識別，篩選維度 |
-| `pitch_type` | string | — | 球種代碼（FF/SI/SL/CU/CH），篩選維度 |
+| `pitch_type` | string | — | 球種代碼（`4S`/`SL`/`CB`/`CH`/`SW`/`SK`/`CT`/`SP`/`KN`/`OTH`，見 [spec/domain/pitch-types.md](../../../spec/domain/pitch-types.md)），篩選維度 |
 | `ts` | ISO-8601 字串 | — | 排序用 |
 | `pitch_velocity` | `number \| null` | km/h | 目前未用於繪圖，保留供之後的球速維度 |
 
 不需要 `pitch_trajectory`——分布圖只看入壘點，帶軌跡會讓檔案膨脹數倍。
 
-> **樣本是合成的。** 現有 `pitches.json` 只有 25 球且沒有 `pitcher` / `pitch_type` 欄位，撐不起篩選。各球種的落點中心依球種特性設定（速球偏高、變化球偏低）是示意值，不是量測值。接真實資料時只要換掉 JSON 即可，欄位不用改。
+> **樣本是合成的。** 現有 `pitches.json` 只有 25 球且沒有 `pitcher` / `pitch_type` 欄位，撐不起篩選。各球種的落點中心依公開的球種特性設定（速球偏高、變化球偏低、右投臂側／手套側分邊）是示意值，不是量測值，完整參數與依據見 [spec/domain/pitch-types.md](../../../spec/domain/pitch-types.md) §3。球種實際上由演算法端判定後經後端傳來，前端不做推論。接真實資料時只要換掉 JSON 即可，欄位不用改。
