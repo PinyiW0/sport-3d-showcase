@@ -32,16 +32,18 @@ const levelOptions = BATTER_LEVEL_ORDER.map(key => ({
 
 // 代表身高的推導過程，攤在頁面上（見下方 <details>）。逐列由 BATTER_LEVELS 算出而非
 // 寫死，之後改身高表這裡會自動跟上，不會變成對不上的過期說明。
+// PR50 平均一併算出來顯示——代表身高是它校準後的定案值，只列定案值會讓算式那欄看似算錯。
 const levelRows = computed(() =>
   BATTER_LEVEL_ORDER.map((key) => {
     const spec = BATTER_LEVELS[key]
     const z = getStrikeZoneForLevel(key)
+    const avg = spec.pr50ByAge.reduce((sum, h) => sum + h, 0) / spec.pr50ByAge.length
     return {
       key,
       label: spec.label,
       grades: spec.grades,
       ages: `${spec.ages[0]}–${spec.ages[1]} 歲`,
-      formula: `(${spec.pr50ByAge.join(' + ')}) ÷ ${spec.pr50ByAge.length}`,
+      formula: `(${spec.pr50ByAge.join(' + ')}) ÷ ${spec.pr50ByAge.length} = ${avg.toFixed(1)}`,
       height: spec.referenceHeightCm,
       zoneText: `${z.bottom.toFixed(1)}–${z.top.toFixed(1)}`,
     }
@@ -131,9 +133,14 @@ const pitchOptions = computed(() =>
         </p>
 
         <p>
-          代表身高取<strong class="font-medium">該級距內各年齡 PR50（均標）的算術平均</strong>：
+          先取<strong class="font-medium">該級距內各年齡 PR50（均標）的算術平均</strong>：
           取平均而非單一年齡，是因為級距內各年齡人數大致均等，只取最大年齡會讓低年級打者的框整體偏高；
           取 PR50 而非 PR75，是因為好球帶要對典型打者成立，不是對高個子。
+        </p>
+
+        <p>
+          這個平均值再<strong class="font-medium">經與業界教練討論後定案</strong>為下表的代表身高——
+          各級皆在平均之上取整、幅度不超過 1 cm。好球帶是用定案值算的，不是直接用算術平均。
         </p>
 
         <div class="overflow-x-auto">
@@ -153,7 +160,7 @@ const pitchOptions = computed(() =>
                   各年齡 PR50 平均
                 </th>
                 <th class="py-1.5 pr-3 font-semibold">
-                  代表身高
+                  代表身高（定案）
                 </th>
                 <th class="py-1.5 font-semibold">
                   好球帶 (cm)
@@ -200,7 +207,7 @@ const pitchOptions = computed(() =>
         <p class="text-neutral-500 dark:text-neutral-400">
           注意：算術平均等於假設該級別各年齡球員人數均等。有實際名冊時應改用年齡分布加權，
           <span class="font-mono">BATTER_LEVELS[*].pr50ByAge</span> 保留了各年齡原始值供重算。
-          另外橫向格寬固定 14.39 cm，少棒的格子長寬比僅 0.82（明顯偏扁），九宮格不可假設為正方形。
+          另外橫向格寬固定 14.39 cm，少棒的格子長寬比僅 0.83（明顯偏扁），九宮格不可假設為正方形。
         </p>
       </div>
     </details>
