@@ -124,9 +124,12 @@ export function buildHomePlateGeometry(thicknessCm = 3): HomePlateGeometry {
   const top = HOME_PLATE_TOP
   const bottom = top.map(([x, y, z]) => [x, y, z - thicknessCm] as Point3D)
   const vertices = [...top, ...bottom]
-  // 五邊形以頂點 0 為扇形中心切成三角形;側面每邊兩個三角形
-  const topFaces = [[0, 1, 2], [0, 2, 3], [0, 3, 4]]
-  const bottomFaces = topFaces.map(face => face.map(i => i + 5))
+  // 五邊形以頂點 0 為扇形中心切成三角形;側面每邊兩個三角形。
+  // HOME_PLATE_POINTS 在 XY 平面是順時針,扇形得反序切頂面法線才朝 +z——
+  // 照原序切會全部朝 -z,three 版 FrontSide 材質會把頂面剔除,板子從上方看是穿透的。
+  const topFaces: [number, number, number][] = [[0, 2, 1], [0, 3, 2], [0, 4, 3]]
+  // 底面朝 -z,相對頂面再反一次繞向
+  const bottomFaces = topFaces.map(([a, b, c]) => [a + 5, c + 5, b + 5])
   const sideFaces = top.flatMap((_, i) => {
     const next = (i + 1) % top.length
     return [[i, next, next + 5], [i, next + 5, i + 5]]
