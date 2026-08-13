@@ -32,11 +32,24 @@ const props = withDefaults(defineProps<{
 
 const hostRef = ref<HTMLDivElement | null>(null)
 let scene: TrajectoryScene | null = null
+/** 卸載旗標。onMounted 的 await 期間就可能卸載,續行前必須重新確認元件還活著。 */
+let disposed = false
+
+/** 冪等釋放,卸載與 await 後的卸載分支共用。 */
+function teardown() {
+  disposed = true
+  scene?.dispose()
+  scene = null
+}
 
 onMounted(async () => {
   if (!hostRef.value)
     return
   const { TrajectoryScene } = await import('./core/trajectoryScene')
+  // 卸載落在 await 期間時 onBeforeUnmount 早已跑完(當時 scene 還是 null,什麼都沒清),
+  // 這裡再建場景就會留下一個沒人回收的 WebGL context
+  if (disposed || !hostRef.value)
+    return
   scene = new TrajectoryScene(hostRef.value, {
     batterHeightCm: props.batterHeightCm,
     zoom: props.zoom,
@@ -59,10 +72,7 @@ watch(
   { deep: true },
 )
 
-onBeforeUnmount(() => {
-  scene?.dispose()
-  scene = null
-})
+onBeforeUnmount(teardown)
 </script>
 
 <template>

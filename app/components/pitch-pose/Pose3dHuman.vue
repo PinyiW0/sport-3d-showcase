@@ -100,6 +100,8 @@ let retargeter: PoseRetargeter | null = null
 let overlay: SkeletonOverlay | null = null
 let resizeObserver: ResizeObserver | null = null
 let rafHandle = 0
+/** 卸載旗標。模型載入是一段長 await,續行前必須重新確認元件還活著。 */
+let disposed = false
 let appliedFrame: unknown = null
 /** 疊顯與模型分開記錄已套用的幀：模型載入前疊顯就能先動。 */
 let overlayFrame: unknown = null
@@ -226,6 +228,10 @@ onMounted(async () => {
 
   try {
     const gltf = await new GLTFLoader().loadAsync(props.modelUrl)
+    // 卸載落在載入期間時 onBeforeUnmount 早已跑完,場景與 renderer 都收乾淨了——
+    // 續行只會把模型掛回死掉的場景,還對已卸載的元件 emit
+    if (disposed)
+      return
     // 投球位移大,骨架動畫下 bounding sphere 不可靠,關掉視錐剔除避免模型消失
     gltf.scene.traverse((node) => {
       if ('isSkinnedMesh' in node && node.isSkinnedMesh)
@@ -243,6 +249,8 @@ onMounted(async () => {
     loading.value = false
   }
   catch (error) {
+    if (disposed)
+      return
     loadError.value = error instanceof Error ? error.message : String(error)
     loading.value = false
   }
@@ -258,6 +266,7 @@ watch(() => props.height, resize)
 watch(() => props.skeleton, visible => overlay?.setVisible(visible))
 
 onBeforeUnmount(() => {
+  disposed = true
   cancelAnimationFrame(rafHandle)
   resizeObserver?.disconnect()
   controls?.dispose()
