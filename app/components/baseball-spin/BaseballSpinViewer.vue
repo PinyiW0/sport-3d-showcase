@@ -36,12 +36,27 @@ const progressPercent = ref(0)
 
 let scene: BaseballSpinScene | null = null
 let resizeObserver: ResizeObserver | null = null
+/** 卸載旗標。onMounted 有兩段 await,每段之後都得重新確認元件還活著。 */
+let disposed = false
+
+/** 冪等釋放,三條路徑共用:onUnmounted、await 後的卸載分支、catch 內的卸載分支。 */
+function teardown() {
+  disposed = true
+  resizeObserver?.disconnect()
+  resizeObserver = null
+  scene?.dispose()
+  scene = null
+}
 
 onMounted(async () => {
   if (!containerRef.value)
     return
   try {
     const { BaseballSpinScene } = await import('./core/scene')
+    // 卸載落在這段 await 時 onUnmounted 早已跑完(當時 scene 還是 null),
+    // 這裡再 new 場景就會留下一個沒人回收的 WebGL context
+    if (disposed || !containerRef.value)
+      return
     scene = new BaseballSpinScene(containerRef.value, { view: props.view, speed: props.speed })
     scene.setAxisArrowVisible(props.showAxisArrow)
     scene.setDirectionRingVisible(props.showDirectionRing)
@@ -50,9 +65,17 @@ onMounted(async () => {
     resizeObserver.observe(containerRef.value)
 
     await scene.loadModel(props.modelUrl, (loaded, total) => {
+      if (disposed)
+        return
       progressPercent.value = total > 0 ? Math.round(loaded / total * 100) : 0
       emit('progress', loaded, total)
     })
+    // glb 載入比 import 久得多,卸載更常落在這一段:此時場景已存在但 onUnmounted 早跑完,
+    // 沒人會回收,只能由這裡主動收
+    if (disposed) {
+      teardown()
+      return
+    }
     loading.value = false
 
     if (props.data)
@@ -62,6 +85,10 @@ onMounted(async () => {
     emit('ready')
   }
   catch (err) {
+    if (disposed) {
+      teardown()
+      return
+    }
     loading.value = false
     emit('error', err instanceof Error ? err : new Error(String(err)))
   }
@@ -87,11 +114,7 @@ watch(() => props.showDirectionRing, (visible) => {
   scene?.setDirectionRingVisible(visible)
 })
 
-onUnmounted(() => {
-  resizeObserver?.disconnect()
-  scene?.dispose()
-  scene = null
-})
+onUnmounted(teardown)
 
 function play(): void {
   scene?.play()
