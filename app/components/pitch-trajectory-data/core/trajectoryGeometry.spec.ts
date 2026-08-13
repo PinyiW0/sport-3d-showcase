@@ -1,3 +1,4 @@
+import type { Point3D } from './trajectoryGeometry'
 import { describe, expect, it } from 'vitest'
 import {
   buildHomePlateGeometry,
@@ -7,6 +8,23 @@ import {
   parsePitchTrajectory,
   PLATE_HALF_WIDTH_CM,
 } from './trajectoryGeometry'
+
+function subtract(p: Point3D, q: Point3D): Point3D {
+  return [p[0] - q[0], p[1] - q[1], p[2] - q[2]]
+}
+
+function cross(u: Point3D, v: Point3D): Point3D {
+  return [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]]
+}
+
+function dot(u: Point3D, v: Point3D): number {
+  return u[0] * v[0] + u[1] * v[1] + u[2] * v[2]
+}
+
+function average(points: Point3D[]): Point3D {
+  const n = points.length
+  return points.reduce<Point3D>((acc, p) => [acc[0] + p[0] / n, acc[1] + p[1] / n, acc[2] + p[2] / n], [0, 0, 0])
+}
 
 describe('parsePitchTrajectory', () => {
   it('取出 [x, y, z] 三元組並捨棄多餘欄位', () => {
@@ -53,6 +71,21 @@ describe('buildHomePlateGeometry', () => {
         expect(index).toBeGreaterThanOrEqual(0)
         expect(index).toBeLessThan(vertices.length)
       }
+    }
+  })
+
+  // 只數 index 數量擋不住繞向反轉。頂面法線朝內時,three 版 FrontSide 材質
+  // 會把頂面剔除,從上方看板子是穿透的(Plotly 版 mesh3d 雙面,不會露餡)。
+  it('每個三角面的法線都朝外——頂面朝上、底面朝下、側面朝外', () => {
+    const { vertices, faces } = buildHomePlateGeometry(3)
+    const centroid = average(vertices)
+
+    for (const face of faces) {
+      const [a, b, c] = face.map(i => vertices[i]!) as [Point3D, Point3D, Point3D]
+      // 右手定則:頂點順序決定法線方向
+      const normal = cross(subtract(b, a), subtract(c, a))
+      const outward = subtract(average([a, b, c]), centroid)
+      expect(dot(normal, outward), `面 [${face.join(', ')}] 的法線朝內`).toBeGreaterThan(0)
     }
   })
 })

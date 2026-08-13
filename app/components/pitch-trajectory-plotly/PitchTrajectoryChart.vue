@@ -42,6 +42,8 @@ const {
 
 const chartRef = ref<HTMLDivElement | null>(null)
 let plotly: typeof import('plotly.js-dist-min') | null = null
+/** 卸載旗標。plotly 的 dynamic import 與 react 都是 await,續行前得確認元件還活著。 */
+let disposed = false
 
 function buildFigure() {
   const yPlane = props.trajectory.at(-1)?.[1] ?? PLATE_HALF_WIDTH_CM
@@ -61,21 +63,32 @@ function buildFigure() {
 }
 
 async function render() {
-  if (!plotly || !chartRef.value || props.trajectory.length < 2) {
+  const el = chartRef.value
+  if (!plotly || !el || disposed || props.trajectory.length < 2) {
     return
   }
   const { traces, layout } = buildFigure()
-  await plotly.react(chartRef.value, traces, layout, { displaylogo: false })
+  await plotly.react(el, traces, layout, { displaylogo: false })
+  // 卸載落在 react 期間時 onBeforeUnmount 的 purge 可能早於這次繪製,自己收
+  if (disposed) {
+    plotly.purge(el)
+  }
 }
 
 onMounted(async () => {
   plotly = await import('plotly.js-dist-min')
+  // 卸載落在 import 期間時 onBeforeUnmount 早已跑完(當時 plotly 還是 null,沒 purge 到),
+  // 這裡再畫下去會在已脫離文件的節點上開出 WebGL context
+  if (disposed) {
+    return
+  }
   await render()
 })
 
 watch(() => [props.trajectory, props.batterHeightCm, props.zoom, props.cameraEye], render, { deep: true })
 
 onBeforeUnmount(() => {
+  disposed = true
   if (plotly && chartRef.value) {
     plotly.purge(chartRef.value)
   }

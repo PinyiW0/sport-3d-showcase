@@ -61,9 +61,12 @@ function liveCamera() {
  */
 let interacting = false
 let renderPending = false
+/** 卸載旗標。plotly 的 dynamic import 與 react 都是 await,續行前得確認元件還活著。 */
+let disposed = false
 
 async function render() {
-  if (!plotly || !chartRef.value || props.frames.length === 0)
+  const el = chartRef.value
+  if (!plotly || !el || disposed || props.frames.length === 0)
     return
   if (interacting) {
     renderPending = true
@@ -71,7 +74,7 @@ async function render() {
   }
   const frame = props.timeMs == null ? null : findPoseFrame(props.frames, props.timeMs)
   await plotly.react(
-    chartRef.value,
+    el,
     buildTraces(frame, space.value, props.color),
     buildLayout(space.value, {
       height: props.height,
@@ -80,6 +83,9 @@ async function render() {
     }),
     { displaylogo: false },
   )
+  // 卸載落在 react 期間時 onBeforeUnmount 的 purge 可能早於這次繪製,自己收
+  if (disposed)
+    plotly.purge(el)
 }
 
 function onPointerDown() {
@@ -105,12 +111,17 @@ onMounted(async () => {
   window.addEventListener('pointerup', onPointerUp)
   window.addEventListener('pointercancel', onPointerUp)
   plotly = await import('plotly.js-dist-min')
+  // 卸載落在 import 期間時 onBeforeUnmount 早已跑完(當時 plotly 還是 null,沒 purge 到),
+  // 這裡再畫下去會在已脫離文件的節點上開出 WebGL context
+  if (disposed)
+    return
   await render()
 })
 
 watch(() => [props.timeMs, props.frames, props.color, props.dark], render)
 
 onBeforeUnmount(() => {
+  disposed = true
   chartRef.value?.removeEventListener('pointerdown', onPointerDown)
   window.removeEventListener('pointerup', onPointerUp)
   window.removeEventListener('pointercancel', onPointerUp)
