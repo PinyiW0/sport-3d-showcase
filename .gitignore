@@ -39,3 +39,8 @@ logs
 test/e2e/test-results*/
 test/e2e/screenshots/
 playwright-report*/
+
+# 演算法端交付的原始資料包（含三機 mp4 與內嵌影片的 Plotly HTML，共 124MB，
+# 單檔已逼近 GitHub 100MB 上限）。要用的樣本另抽進 public/samples/，
+# 包內有什麼、欄位怎麼定義見同名的 doc/投手姿態frame.md
+doc/投手姿態frame/
