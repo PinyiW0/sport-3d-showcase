@@ -4,7 +4,7 @@ import { defineAsyncComponent } from 'vue'
 // 全部 3D 研究模組的登錄表。索引頁與展示頁都讀這裡。
 // done  = 研究告一段落（baseball-spin、clock-spin、pitch-pose-skeleton、
 //         pitch-trajectory、strike-zone-grid、pitch-distribution）
-// wip   = 有可運作實作可點進去看，但還在調整（pitch-pose-human）
+// wip   = 有可運作實作可點進去看，但還在調整（pitch-pose-human、pose-metrics-chart）
 // planned = 尚未動工，四個必備區塊先給文字輪廓、參考資料選填
 
 // baseball-spin 樣本（後端 result.json 原格式，snake_case；取自 public/samples/spin/sample1）
@@ -47,6 +47,34 @@ const DISTRIBUTION_SAMPLE = `{
   "pitch_type": "SL",
   "strike_zone_point": [2.89, 21.59, 57.26],
   "pitch_velocity": 123.81
+}`
+
+// 姿態生物力學樣本（後端 biomech.json schema_version 6，真實量測；timeseries 各 748 筆，此處省略中段）
+const BIOMECH_SAMPLE = `{
+  "schema_version": 6,
+  "pitch_id": "pitch_20260624_152505.265147_2a4264",
+  "throwing_hand": "right",
+  "frame_count": 748,
+  "units": { "angles": "degree", "distances": "cm", "timestamps": "UTC ISO-8601" },
+  "events": {
+    "leg_lift":   { "frame_index": 211, "timestamp": "2026-06-24T15:25:03.313518" },
+    "foot_plant": { "frame_index": 608, "timestamp": "2026-06-24T15:25:04.901448" },
+    "release":    { "frame_index": 637, "timestamp": "2026-06-24T15:25:05.018642" }
+  },
+  "timeseries": {
+    "timestamp": ["2026-06-24T15:25:02.469251", "… 共 748 筆 …"],
+    "elbow_flexion_angle": [140.84, 140.79, null, "… 共 748 筆，缺測為 null …"],
+    "shoulder_external_rotation_angle": [], "shoulder_internal_rotation_angle": [],
+    "lead_knee_flexion": [], "trunk_rotation": [], "trunk_anterior_tilt": [], "pelvis_rotation": []
+  },
+  "at_release": { "arm_extension": 175.06, "release_height": 164.2, "trunk_lateral_tilt": 12.5 },
+  "at_foot_plant": { "stride_length": 119.3 },
+  "peak": {
+    "shoulder_external_rotation_angle": {
+      "value": 158.49, "raw_value": 143.23, "frame_index": 632,
+      "window": "foot_plant→release", "reliable": true
+    }
+  }
 }`
 
 // pose3d 樣本（後端 outcome.json，只留前端讀得到的欄位；pose_3d 為 COCO-17 id → 座標）
@@ -403,20 +431,87 @@ export const modules: ModuleSpec[] = [
   },
   {
     slug: 'pose-metrics-chart',
-    title: '姿態數據線性圖',
+    title: '投手姿態數據線性圖',
     sport: 'baseball',
-    status: 'planned',
-    summary: '把姿態衍生數據（關節角度、角速度等）以時間軸折線圖呈現，可與 3D 骨架連動。',
-    tags: ['charts', 'line-chart', 'pose'],
-    tech: ['chart.js / vue-chartjs（見 ui-config additionalFeatures）', 'Vue 3'],
+    status: 'wip',
+    summary: '把單球的七條姿態角度疊在同一條 ±180 的角度軸上，橫軸為影格序號，配上抬腿／踏地／出手三條事件線，看動作鏈上各關節什麼時候到頂。三機影片接在圖上方共用同一個播放頭：播影片游標跟著走，拖圖表影片跟著跳。圖例可逐條點掉單獨看。',
+    tags: ['SVG', 'line-chart', 'biomech', 'multi-series', 'video-sync'],
+    updated: '2026-08',
+    presentation: defineAsyncComponent(() => import('~/components/modules/PoseMetricsChartShowcase.vue')),
+    tech: [
+      '純 SVG 折線（無圖表庫：不裝 chart.js／plotly）',
+      '兩種版面：分列（預設，各自最佳值域）與疊圖（共用 ±180 軸，看得到交叉點）',
+      '分列解決的是壓扁——疊圖時軀幹前傾只用到軸高的 16%、肩膀內旋 25%',
+      '一條指標一個 path、748 個點只有 1 個 DOM 節點',
+      '缺口雙門檻：≤10 格且兩端角度差 ≤15 度才接起來，其餘留白不猜',
+      '±180 環繞角以相鄰差 > 180 判定並斷線，不畫貫穿全圖的假垂直線',
+      'X 軸是影格序號（約 250fps，取樣不等距，實測相鄰間隔 0.6～9.0 ms）',
+      '平滑分兩層：Catmull-Rom 只改點與點怎麼連（點不動），高斯低通才動數值',
+      '高斯逐段濾波，段落端點用反對稱延拓——截短窗口會把端點往內拉 0.9 度',
+      '缺口門檻與濾波強度不寫死：每次拿到資料重新推導（fps、缺口分布、事件間隔）',
+      'Y 軸用角度的自然分度（45 一格），通用 1／2／5 階梯會給出 100 度這種刻度',
+      '深淺兩套完整配色（theme prop，預設 light）：深底用 200–300 色階、白底換 500–600',
+      '七色的色相在環上拉開（紅／橘／黃／綠／藍／紫／洋紅）；圖表與圖例共讀 core/palette.ts',
+      '拖曳游標讀值：面板列出當下影格的各項數值（小數一位），塞不下就翻到游標另一側',
+      '游標位置走 defineModel，父層綁 v-model 就能拿去驅動別的畫面',
+      '三機影片與曲線共用播放頭：影片第 N 格就是 timeseries[N]，靠影格序號對位不靠秒數',
+      '播放時 rAF 只讀主畫面的 currentTime、不逐格 seek；跟隨機位漂超過 0.12 秒才校正',
+      '切主畫面只換格線位置不搬 DOM——搬容器會讓 video 重新掛載、整支影片重載',
+      'Vue 3 / Nuxt 4',
+    ],
     data: {
-      summary: '每影格的純量指標序列（如關節角度、角速度）。',
-      format: '（規劃中）series[metric][frame] = number',
+      summary: '單球的 biomech.json（schema_version 6）：748 影格 × 7 條角度序列（degree，缺測為 null）、抬腿／踏地／出手三個事件的 frame_index、以及 peak 與 at_release 摘要。另加三機影片（各 748 格、與序列逐格對應），骨架疊圖由演算法端燒錄在畫面上。',
+      format: 'PoseMetrics（core/parseBiomech.ts；由 parseBiomech 從後端原檔轉換）',
+      sample: BIOMECH_SAMPLE,
+      sampleUrl: 'public/samples/pose-metrics/biomech.json（748 影格 × 7 指標，151KB，真實量測；後端原檔，欄位與數值未改）＋ public/samples/pose-metrics/videos/{3B,HB,1B}.mp4（各 748 格、720×540、約 2.3MB）',
     },
     handoff: {
-      files: ['（規劃中）折線圖元件'],
-      flexPoints: ['指標選擇', '時間軸縮放', '與 3D 骨架的游標連動'],
+      files: [
+        'app/components/pose-metrics-chart/（整包 cp，含 core/、兩個版面元件、影片面板與其單元測試；零外部相對依賴，不必連帶帶走其他資料夾）',
+        'app/composables/usePoseMetrics.ts（樣本讀取＋參數推導的串接層；接真 API 時改用其中的 usePoseMetricsFrom 餵回應即可）',
+        'public/samples/pose-metrics/biomech.json 與同層的 videos/（三支 mp4）',
+        'scripts/extract-pose-videos.mjs（要換一顆球的影片時才需要；交付包不進版控，沒這支就重製不出來）',
+      ],
+      dependencies: [
+        'Nuxt 4（showcase 靠 auto-import 取得 ref/computed，模組本身只 import vue）',
+        'tailwindcss（線條與文字的顏色 class）',
+      ],
+      flexPoints: [
+        '顯示哪幾條指標（metricKeys prop）與事件線／平滑／接缺口三個開關',
+        '游標影格（v-model:hoverFrame，不綁就由元件自己記著）與 interactive 總開關',
+        '影片面板的機位清單（sources prop，第一支即預設主畫面）、影片影格率 fps 與播放頭 v-model:frame／v-model:playing',
+        'viewBox 尺寸 viewWidth/viewHeight（預設 960×360）',
+        '版面（分列／疊圖）、每列高度 rowHeight、配色主題（theme prop：light／dark）與兩套色表',
+        '窄畫面的分界與字級（COMPACT_BREAKPOINT／COMPACT_FONT_SIZE）',
+        '參數推導的三個常數（core/autoTuning.ts）：缺口的毫秒上限、角度門檻的 MAD 係數、各級平滑的時間常數',
+        '缺口門檻也可直接傳 maxBridgeFrames／maxBridgeDelta 覆寫推導值',
+        '環繞角斷線閾值 WRAP_THRESHOLD_DEG（預設 180 = 值域的一半）',
+        '角度軸範圍 ANGLE_DOMAIN 與刻度階梯 DEGREE_TICK_STEPS',
+        '七條的配色 core/palette.ts（圖表與圖例共讀同一份）',
+        '與 3D 骨架的游標連動（尚未實作，前提條件見已知限制）',
+      ],
     },
+    limitations: [
+      '七條指標的缺測率從 2.5%（軀幹旋轉）到 40.2%（肩膀內旋）不等，缺測代表姿態估計在該影格失敗（遮蔽或關鍵點信心不足），不是雜訊。畫線時只接「安靜的小洞」：缺口在 10 格（40ms）內且兩端角度差不到 15 度才連過去，實測多數缺口兩端只差 1～3 度，接起來的誤差比線寬還小。長度不能單獨當門檻——肩膀外旋在第 604～613 格同樣只缺 10 格，兩端卻差 86.2 度，而那正是踏地到出手之間最劇烈的階段，一條直線補過去等於捏造一段沒量到的軌跡，所以那個洞留著。關掉「接小缺口」可以看原始的斷點分布（肩膀外旋會碎成 25 段）。',
+      '軀幹旋轉與髖部旋轉的值域是 ±180 的環繞角，資料裡實際出現 358.3 度（軀幹）與 355.9 度（骨盆）的相鄰跳變，那是越過 ±180 邊界而不是真的轉了 358 度。目前處理是相鄰差超過 180 就斷線，所以那裡會看到缺口。另一條路是 unwrap（累加 ±360 讓角度連續），但實測 unwrap 後值域會跑到 -225.7～-9.7（軀幹）與 -222.9～-37.9（髖部），落在 ±180 內的比例從 85% 掉到 14%，反而更難畫，也與 peak 及 at_release 的數字對不上，因此在後端明確定義該用哪種表示之前不做。',
+      '逐影格指標只有七條。同一批交付的 xlsx（frame_angles 工作表）另有六條逐影格資料——肩外展、肩水平外展、髖肩分離、肘內翻力矩、跨步距離、軀幹側傾——但 biomech.json 的 timeseries 沒給，在 JSON 裡只剩 peak／at_release 的單點值，畫不成曲線。要補齊得請演算法端把 timeseries 補到與 xlsx 一致，落差清單見 doc/投手姿態frame.md。',
+      '肩膀內旋是純衍生欄位：實測 447 個有值點 100% 等於肩膀外旋取負號，且只在外旋為負時才有值，畫出來就是外旋曲線負半段的鏡像，不帶新資訊。保留它是為了對得上後端 peak 區塊的同名欄位；圖例點掉它，剩下的六條就都是獨立量測。',
+      '線條平滑分兩層，代價不同。Catmull-Rom 只改「點與點之間怎麼連」，每個資料點的位置一個都沒動、線仍穿過所有原始點。高斯低通則會**實際動到數值**：預設的中等強度（σ=1.5）實測讓曲率降 78%、峰值一位小數都沒變，但出手那一格會偏 2.6 度；切到強（σ=3）曲率降 91%、視覺最順，出手格則偏 7.9 度——那是整段動作最劇烈的瞬間，順度與保真在這裡是直接衝突的，所以做成可切換而不是寫死。對姿態估計資料做低通是生物力學的標準處理（後端自己的 peak 也分 value 與 raw_value、差了 15 度），但拖曳游標讀到的數值一律取自原始資料，不受平滑影響。',
+      'peak 有五個指標，但只有肩外旋與肩內旋兩條有對應曲線，其餘三個（肩外展、髖肩分離、肘內翻力矩）標不到圖上、只能當數值卡。另外 peak.value 是平滑後的值（肩外旋實測 158.49 對曲線上的 143.23），而肩內旋的 value 與 raw_value 都帶著外旋的正負號（-87.63／-90.26 對序列裡的 +90.26），所以圖上的峰值標記無論座標或標籤數字都取曲線在該 frame_index 的實際值，不採用 peak 的任一數值欄位——後端原值改由下方的峰值卡呈現，那裡沒有位置可以矛盾。',
+      '橫軸固定畫到第 750 影格，不隨交付長度伸縮。演算法端每次交付的影格數不固定（這顆是 748），軸跟著資料走的話短交付會被拉滿整個寬度、看不出不足，兩顆球也並排比不了；固定之後交付不足的部分就是右邊那塊空白，游標拖進去各列讀數顯示「—」。代價是超過 750 格的交付畫不出來——軸不會自動延伸，這是刻意的取捨而非疏漏，展示頁在資料超過名目長度時會在資訊列明說。750 是設定值不是量測值：biomech.json 沒有任何欄位宣告擷取窗有多長（frame_count 講的是實際交付幾格），換一套擷取設定要改 NOMINAL_FRAME_SPAN 或傳 frameSpan prop。',
+      '影片是交付包的內嵌版重壓來的，不是交付的原始 mp4。演算法端交付的三支 mp4 編碼是 mp4v（MPEG-4 Part 2），Chrome 與 Safari 都不支援、`<video>` 放不出來；可用的 H.264 版以 base64 內嵌在 pitch_4panel.html 裡，但那一版每支只有 3 個關鍵影格，拖時間軸時要從關鍵影格往下解上百格才畫得出目標格，明顯卡頓。scripts/extract-pose-videos.mjs 抽出後重壓成 720×540、每 10 格一個關鍵影格，三支合計從 20.6MB 降到 6.8MB，連續 12 次 seek 實測 468ms 全部追上。換一顆球就要重跑這支腳本，而它需要 gitignore 的交付包在位。',
+      '影片與曲線靠影格序號對位，不靠秒數——兩邊的秒數差了 8 倍。影片是 748 格、30fps 的慢動作重編碼（實際擷取約 250fps、整段只有 2.99 秒），所以 1× 播放約等於實際速度的 1/8；畫面上顯示的秒數一律取自 timeseries 的實際擷取時間，不是影片時間。軸畫到第 750 格但影片只有 748 格，最後兩格沒有畫面，那時停在最後一格並在讀數列明說。',
+      '一次只吃一球，沒有跨球疊圖或同投手多球比較。要做多球比較，呼叫端得先決定對齊方式（依事件對齊或依絕對時間對齊），那是另一個資料層問題。',
+      '尚未與 3D 骨架游標連動。前提條件已驗證成立——同一球的 outcome.json 與 biomech.json 是 748 影格逐格對應、每格時間戳完全相同、release 都在第 637 格——但 public/samples/pose3d/outcome.json 目前是另一顆球（152029.893901，左投），要連動得先把該樣本換成同一顆球。兩邊時間戳格式不同（biomech 是 ISO-8601、outcome 是 YYYYMMDD_HHMMSS.micro），都必須以 UTC 解讀，混用本機時區會差八小時。',
+      '慣用手目前只顯示不使用。角度的正負號慣例很可能與慣用手綁定（左投的軀幹旋轉正負相反），但這份資料只有一球右投，沒有第二筆可以驗證，所以不做任何依慣用手的鏡像處理——沒有證據的翻轉比不翻轉更危險。',
+    ],
+    references: [
+      { label: '資料來源與欄位定義、待與演算法端確認的落差：doc/投手姿態frame.md' },
+      { label: '取樣不等距：相鄰間隔 0.6～9.0 ms、平均 4.0 ms，全長 2.992 秒（約 250fps）' },
+      { label: '事件位置：抬腿第 211 影格、踏地第 608、出手第 637；踏地到出手僅 29 格（117 ms）' },
+      { label: '角度軸固定 ±180：軀幹與髖部旋轉實測走到 -178.7 與 -176.7，收窄到 -90 會裁掉其中 14.8% 與 19.2% 的點' },
+      { label: '斷線、環繞角與刻度三個決策的完整推導：app/components/pose-metrics-chart/README.md' },
+    ],
   },
 ]
 
