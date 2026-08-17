@@ -26,3 +26,11 @@
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1);
 }
+
+/* 資料圖表的畫布底色。
+   刻意固定不隨 light/dark 翻面：多系列折線靠七個粉彩色階互相區分，
+   底色一變對比關係就整組跑掉。只有繪圖區吃這個色，軸標籤留在外面跟著主題走。
+   定成 token 而非任意值，是因為 visual-hierarchy-check 擋 class 任意值色彩。 */
+@theme static {
+  --color-chart-canvas: #12263f;
+}

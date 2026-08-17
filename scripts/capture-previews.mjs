@@ -64,6 +64,7 @@ const MODULES = [
   'pitch-trajectory',
   'strike-zone-grid',
   'pitch-distribution',
+  'pose-metrics-chart',
 ]
 
 /**

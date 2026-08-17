@@ -9,6 +9,8 @@ import PitchDistribution from '~/components/pitch-distribution/PitchDistribution
 import Pose3dHuman from '~/components/pitch-pose/Pose3dHuman.vue'
 import Pose3dSkeleton from '~/components/pitch-pose/Pose3dSkeleton.vue'
 import PitchTrajectoryChart from '~/components/pitch-trajectory/PitchTrajectoryChart.vue'
+import { SERIES_METRIC_KEYS } from '~/components/pose-metrics-chart/core/types'
+import PoseMetricsChart from '~/components/pose-metrics-chart/PoseMetricsChart.vue'
 import {
   pitchFromStrikeZonePoint,
   strikeZoneFromHeight,
@@ -102,6 +104,15 @@ const DISTRIBUTION_TYPES: (string | null)[] = [null, '4S', 'SK', 'SL', 'CB']
 const distributionIndex = ref(0)
 let distributionTimer: ReturnType<typeof setInterval> | undefined
 
+// --- pose-metrics-chart：整張圖是靜態的，用「逐條疊上去」當動畫。
+// 這正是這個模組的看點——一條一條加進來，才看得出七條共用同一條 ±180 軸。
+// 從七條起跳：poster 要能代表「七條疊在同一條軸上」，所以初值給滿、
+// 輪播延後啟動（截 poster 是在 ready 後 SETTLE_MS≈1.6 秒，太早開始就會拍到跑到一半的狀態）
+const { metrics: poseMetrics } = usePoseMetrics()
+const visibleMetricCount = ref(SERIES_METRIC_KEYS.length)
+let metricTimer: ReturnType<typeof setInterval> | undefined
+let metricDelay: ReturnType<typeof setTimeout> | undefined
+
 onMounted(() => {
   if (needsBt3d.value) {
     rotateTimer = setInterval(() => {
@@ -126,12 +137,22 @@ onMounted(() => {
       levelIndex.value = (levelIndex.value + 1) % LEVEL_SEQUENCE.length
     }, 1500)
   }
+  // 比球慢：每次多一條線，跳太快看不出疊了什麼上去
+  if (slug.value === 'pose-metrics-chart') {
+    metricDelay = setTimeout(() => {
+      metricTimer = setInterval(() => {
+        visibleMetricCount.value = (visibleMetricCount.value % SERIES_METRIC_KEYS.length) + 1
+      }, 700)
+    }, 3000)
+  }
 })
 onBeforeUnmount(() => {
   clearInterval(rotateTimer)
   clearInterval(spinTimer)
   clearInterval(distributionTimer)
   clearInterval(levelTimer)
+  clearInterval(metricTimer)
+  clearTimeout(metricDelay)
 })
 
 const currentPitch = computed(() => pitches.value[rotatingIndex.value] ?? null)
@@ -185,6 +206,8 @@ const ready = computed(() => {
     return spinData.value != null
   if (slug.value === 'pitch-distribution')
     return distributionPitches.value.length > 0
+  if (slug.value === 'pose-metrics-chart')
+    return poseMetrics.value.frameCount > 0
   return false
 })
 </script>
@@ -240,6 +263,17 @@ const ready = computed(() => {
       <PitchDistribution
         :pitches="shownDistribution"
         :zone="distributionZone"
+      />
+    </div>
+
+    <!-- 折線圖的 viewBox 是 960×360（比畫布更寬扁），用 w-full 填滿寬度後
+         上下自然留黑邊，不必另外調尺寸 -->
+    <div v-else-if="slug === 'pose-metrics-chart'" class="w-full">
+      <PoseMetricsChart
+        :metrics="poseMetrics"
+        :metric-keys="SERIES_METRIC_KEYS.slice(0, visibleMetricCount)"
+        :interactive="false"
+        theme="dark"
       />
     </div>
 
