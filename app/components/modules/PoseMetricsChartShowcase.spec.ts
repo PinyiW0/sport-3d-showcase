@@ -1,6 +1,14 @@
 import { mountSuspended } from '@nuxt/test-utils/runtime'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
+import PoseMetricsSmallMultiples from '~/components/pose-metrics-chart/PoseMetricsSmallMultiples.vue'
 import PoseMetricsChartShowcase from './PoseMetricsChartShowcase.vue'
+
+beforeEach(() => {
+  // 測試環境沒有解碼器，影片面板的 play()／pause() 只要不炸就好
+  vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined)
+  vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
+})
 
 // 這支測試的存在理由與 PitchDistributionShowcase.spec.ts 相同：純 SVG 的圖表
 // 本體測得再滿，也測不到 NuxtUI 元件的執行期約束（USelect 的 value 不能是
@@ -75,6 +83,40 @@ describe('poseMetricsChartShowcase', () => {
     expect(text).toContain('模擬短資料')
     expect(text).toContain('750')
     expect(text).toContain('留白')
+  })
+
+  it('三機影片接在圖表上方，播放頭共用', async () => {
+    const wrapper = await mountSuspended(PoseMetricsChartShowcase)
+    expect(wrapper.find('[data-testid="pose-metrics-video"]').exists()).toBe(true)
+    expect(wrapper.findAll('video')).toHaveLength(3)
+  })
+
+  it('滑鼠移開圖表時播放頭留在原地，不歸零', async () => {
+    // 圖表的 hoverFrame 是「滑鼠在哪」、移開就 null；接上影片後它要變成常駐的
+    // 播放位置。這條就是那個語意轉換的合約
+    const wrapper = await mountSuspended(PoseMetricsChartShowcase)
+    const chart = wrapper.findComponent(PoseMetricsSmallMultiples)
+    const readout = () => wrapper.get('[data-testid="pose-metrics-video-readout"]').text()
+
+    chart.vm.$emit('update:hover-frame', 211)
+    await nextTick()
+    expect(readout()).toContain('211 影格')
+
+    chart.vm.$emit('update:hover-frame', null)
+    await nextTick()
+    expect(readout()).toContain('211 影格')
+  })
+
+  it('拖圖表會停播，不跟影片搶著寫播放頭', async () => {
+    const wrapper = await mountSuspended(PoseMetricsChartShowcase)
+    const play = wrapper.get('[data-testid="pose-metrics-video-play"]')
+
+    await play.trigger('click')
+    expect(play.attributes('aria-label')).toBe('暫停')
+
+    wrapper.findComponent(PoseMetricsSmallMultiples).vm.$emit('update:hover-frame', 300)
+    await nextTick()
+    expect(play.attributes('aria-label')).toBe('播放')
   })
 
   it('樣本還沒到手時仍排出七個空列，版面不會整塊塌掉再彈回來', async () => {

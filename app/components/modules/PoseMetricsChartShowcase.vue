@@ -7,6 +7,7 @@ import { truncateMetrics } from '~/components/pose-metrics-chart/core/parseBiome
 import { metricInfo, NOMINAL_FRAME_SPAN, SERIES_METRIC_KEYS } from '~/components/pose-metrics-chart/core/types'
 import PoseMetricsChart from '~/components/pose-metrics-chart/PoseMetricsChart.vue'
 import PoseMetricsSmallMultiples from '~/components/pose-metrics-chart/PoseMetricsSmallMultiples.vue'
+import PoseMetricsVideoPanel from '~/components/pose-metrics-chart/PoseMetricsVideoPanel.vue'
 
 // pose-metrics-chart 模組的「模組呈現」互動元件：七條姿態角度疊在同一條
 // ±180 的軸上，點膠囊可以單獨藏起某幾條。
@@ -76,8 +77,43 @@ const layoutOptions = (Object.keys(LAYOUT_LABELS) as ChartLayout[]).map(value =>
   value,
 }))
 
-/** 兩種版面共用同一個游標，切換時位置不會跑掉 */
-const hoverFrame = ref<number | null>(null)
+/**
+ * 播放頭：影片與兩種版面的圖表共用同一個影格序號。
+ *
+ * 與圖表原本的 hoverFrame 語意不同——hoverFrame 是「滑鼠在哪」，移開就變 null；
+ * 接上影片後它要變成常駐的播放位置，播完一段也還留在原地。所以這裡不綁
+ * v-model，改成濾掉 null 的單向回寫（圖表元件本身不必改）。
+ */
+const playhead = ref(0)
+const playing = ref(false)
+
+function onChartFrame(frame: number | null) {
+  if (frame === null)
+    return
+  // 手動拖曳就停播，不要跟影片的 rAF 迴圈搶著寫播放頭
+  playing.value = false
+  playhead.value = frame
+}
+
+/**
+ * 三機影片。與曲線的共同語言是影格序號：影片是 748 格的慢動作重編碼，
+ * 第 N 格就是 timeseries[N]。第一支即預設主畫面。
+ *
+ * 檔案由 scripts/extract-pose-videos.mjs 從交付包產出——交付的原始 mp4 是
+ * mp4v 編碼，瀏覽器播不了，可用的 H.264 版藏在 pitch_4panel.html 裡。
+ */
+const asset = useAssetUrl()
+const VIDEO_SOURCES = [
+  { key: 'HB', label: '本壘後方' },
+  { key: '3B', label: '三壘鏡頭' },
+  { key: '1B', label: '一壘鏡頭' },
+].map(camera => ({ ...camera, src: asset(`/samples/pose-metrics/videos/${camera.key}.mp4`) }))
+
+/** 讀數的秒數走實際擷取時間（約 250fps），不是影片時間——影片慢了 8 倍 */
+const playheadSeconds = computed(() => {
+  const ms = metrics.value.timesMs[playhead.value]
+  return ms === undefined ? null : ms / 1000
+})
 
 const theme = ref<ChartTheme>('light')
 const palette = computed(() => chartPalette(theme.value))
@@ -141,6 +177,16 @@ const wrappingLabels = computed(() =>
       :description="String(error)"
     />
 
+    <!-- 影片在上、圖在下：兩邊共用播放頭，拖哪一邊另一邊都跟著走。
+         frameCount 給全量樣本——影片有 748 格，不隨「模擬短資料」截短 -->
+    <PoseMetricsVideoPanel
+      v-model:frame="playhead"
+      v-model:playing="playing"
+      :sources="VIDEO_SOURCES"
+      :frame-count="metrics.frameCount"
+      :capture-seconds="playheadSeconds"
+    />
+
     <!-- 圖例即開關：點一下把那條藏起來／叫回來 -->
     <div class="flex flex-wrap gap-2" data-testid="pose-metrics-legend">
       <button
@@ -166,7 +212,7 @@ const wrappingLabels = computed(() =>
 
     <PoseMetricsSmallMultiples
       v-if="layout === 'stacked'"
-      v-model:hover-frame="hoverFrame"
+      :hover-frame="playhead"
       :metrics="shownMetrics"
       :metric-keys="visibleKeys"
       :show-events="showEvents"
@@ -176,10 +222,11 @@ const wrappingLabels = computed(() =>
       :max-bridge-frames="tuning.maxBridgeFrames"
       :max-bridge-delta="tuning.maxBridgeDelta"
       :theme="theme"
+      @update:hover-frame="onChartFrame"
     />
     <PoseMetricsChart
       v-else
-      v-model:hover-frame="hoverFrame"
+      :hover-frame="playhead"
       :metrics="shownMetrics"
       :metric-keys="visibleKeys"
       :show-events="showEvents"
@@ -189,6 +236,7 @@ const wrappingLabels = computed(() =>
       :max-bridge-frames="tuning.maxBridgeFrames"
       :max-bridge-delta="tuning.maxBridgeDelta"
       :theme="theme"
+      @update:hover-frame="onChartFrame"
     />
 
     <div class="flex flex-wrap items-center justify-center gap-4">
@@ -307,6 +355,8 @@ const wrappingLabels = computed(() =>
       這是姿態估計資料的標準處理（後端自己的 peak 也分 value 與 raw_value、差了 15 度）。
       預設「中」實測讓曲率降 78%、峰值一位小數都沒變、出手那格偏 2.6 度；選「關」看的就是原始折線。
       拖曳游標讀到的數值一律取自原始資料，不受平滑影響。
+      影片與曲線靠影格序號對位（影片第 N 格就是 timeseries[N]），所以拖圖表影片會跳、
+      播影片游標會走；拖圖表時會自動停播，兩邊不搶同一個播放頭。
     </p>
   </div>
 </template>

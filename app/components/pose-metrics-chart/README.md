@@ -12,6 +12,8 @@
 |------|------|
 | `app/components/pose-metrics-chart/PoseMetricsChart.vue` | **疊圖版面**：七條共用一條 ±180 軸、事件線與膠囊、拖曳游標與數值面板 |
 | `app/components/pose-metrics-chart/PoseMetricsSmallMultiples.vue` | **分列版面**：一條一列、各自最佳值域、直接標註、讀數標在列右側 |
+| `app/components/pose-metrics-chart/PoseMetricsVideoPanel.vue` | **三機影片**：一大兩小、可切主畫面，與圖表共用播放頭 |
+| `app/components/pose-metrics-chart/core/videoSync.ts` | 影格 ↔ 影片時間的換算（純 TS，有單元測試） |
 | `app/components/pose-metrics-chart/core/useElementWidth.ts` | 量實際渲染寬度，供窄畫面加大字級／減少刻度 |
 | `app/components/pose-metrics-chart/core/types.ts` | 指標字典（顯示名／單位／環繞旗標）、角度軸範圍、後端原始格式的型別 |
 | `app/components/pose-metrics-chart/core/palette.ts` | 七條的配色，圖表與圖例共讀（純 TS） |
@@ -20,6 +22,8 @@
 | `app/components/pose-metrics-chart/core/autoTuning.ts` | **從資料推導繪圖參數**：fps、缺口門檻、濾波強度（純 TS，有單元測試） |
 | `app/composables/usePoseMetrics.ts` | 樣本載入（Nuxt 專用，非 Nuxt 環境自行替換） |
 | `public/samples/pose-metrics/biomech.json` | 樣本（748 影格，151KB，**真實量測資料**）。後端原檔，欄位與數值一字未改，只補了檔尾換行以符合 lint |
+| `public/samples/pose-metrics/videos/{3B,HB,1B}.mp4` | 三機影片樣本（各 748 格、720×540、約 2.3MB），骨架疊圖由演算法端燒錄在畫面上 |
+| `scripts/extract-pose-videos.mjs` | 從交付包產出上面三支影片（交付包不進版控，沒這支腳本就重製不出來） |
 | `doc/投手姿態frame.md` | 交付包說明、欄位定義、待與演算法端確認的落差 |
 
 圖例做在 `app/components/modules/PoseMetricsChartShowcase.vue`（宿主層）而不是圖表元件內，因為它要能點——狀態留在宿主層，圖表本體保持無狀態才能被 `/preview` 錄影頁直接驅動。整包搬走時圖例要自己做一個，色表讀 `core/palette.ts` 就好。
@@ -177,10 +181,32 @@
 三個實作細節：
 
 - **座標換算不用 SVG matrix API**。viewBox 走 `xMidYMid meet`、元素是 `w-full h-auto`，寬度方向恆定填滿，所以 `(clientX - rect.left) × (viewWidth / rect.width)` 就是 SVG x。
-- **影格夾在資料範圍不是軸範圍**。軸畫到 750（湊 50 的倍數）但只有 748 格資料，`frameAtX()` 夾在 0～747，否則游標拖到底會讀到 `undefined`。
+- **影格夾在軸範圍不是資料範圍**。`frameAtX()` 夾在 0～`frameSpan`，游標到得了軸的尾端；越界那幾格由呼叫端顯示「—」，不靠夾持迴避。
 - **觸控要 setPointerCapture**。沒有 capture 的話 `pointermove` 一離開元素就斷，游標會卡在邊緣。滑鼠不需要（hover 本來就連續），所以只在 `pointerType !== 'mouse'` 時 capture。SVG 掛 `touch-pan-y` 保留垂直捲動，只把水平拖曳讓給圖表。
 
 面板預設放游標右側，右邊塞不下就翻到左側，最後再夾回繪圖區內。小三角認的是**面板最後落在哪一側**而不是原本想放哪側——夾回去之後可能翻邊，指錯方向比沒有三角更糟。
+
+### 三機影片與曲線同步
+
+`PoseMetricsVideoPanel.vue` 把交付的三機影片接到同一個播放頭上：播放時圖表游標跟著走，拖圖表時影片跟著跳。
+
+**共同語言是影格序號，不是秒數。** 交付影片是 748 格、30fps 的慢動作重編碼（實際擷取約 250fps），兩邊的秒數差了 8 倍對不上；但影片第 N 格就是 `timeseries[N]`，換算只要 `currentTime = (frame + 0.5) / 30`。取半格是刻意的——落在兩格邊界上時瀏覽器的取整方向沒有保證。讀數顯示的秒數一律取自 `timesMs` 的實際擷取時間。
+
+契約是兩個 model：`v-model:frame`（播放頭）與 `v-model:playing`。`playing` 開成 model 是為了讓宿主層叫得停——拖圖表時要先停播，否則 rAF 迴圈與滑鼠會搶著寫同一個播放頭。
+
+同步機制沿用演算法端 4panel 檢視器的做法（那是驗證過的）：
+
+- **播放中不逐格 seek**。主畫面自己解碼，rAF 只負責讀它的 `currentTime` 換算成影格；跟隨機位漂超過 0.12 秒才拉回來。每格都設 `currentTime` 等於逐格 seek，硬體解碼的優勢會整個丟掉。
+- **播放中不吃外部寫入**的 `frame`——那是自己剛寫的。
+- **切主畫面只換格線位置，不搬 DOM**。把 `<video>` 移到另一個容器會重新掛載，等於整支影片重載、畫面閃一下。
+
+宿主層要把圖表的 `hoverFrame` 轉成常駐播放頭：`hoverFrame` 的語意是「滑鼠在哪」，移開會變 `null`。做法是不綁 `v-model`，改成濾掉 `null` 的單向回寫（見 `PoseMetricsChartShowcase.vue` 的 `onChartFrame`），圖表元件本身不必改。
+
+影片資產本身有兩個坑，都在 `scripts/extract-pose-videos.mjs` 裡處理掉了：交付的 `.mp4` 是 **mp4v（MPEG-4 Part 2）編碼，瀏覽器播不了**，可用的 H.264 版藏在 `pitch_4panel.html` 的 base64 裡；而那一版**每支只有 3 個關鍵影格**，拖曳時得從關鍵影格解上百格才畫得出來。重壓成 `-g 10`（75 個關鍵影格）後，連續 12 次 seek 實測 468ms 全部追上。
+
+版面限寬 `max-w-3xl` 是必要的：主畫面佔 2/3 欄寬，在寬螢幕上會長到 800px 高、把折線圖整個擠到摺線下——兩者同時看得到才是這個版面的目的。三欄兩列、主畫面佔 2×2 讓三個畫面都剛好是 4:3，不必裁也不留黑邊。
+
+沒有用 NuxtUI 的 `USlider`／`UIcon`：這個資料夾是可攜模組。時間軸用原生 `<input type="range">`，順便免費拿到鍵盤左右鍵操作。
 
 ### 窄畫面
 
@@ -204,7 +230,7 @@
 | `peak.<metric>` | `{ value, frame_index, window, reliable }` | 依指標 | 峰值卡。`reliable: false` 必須標示 |
 | `at_release` / `at_foot_plant` | `Record<string, number>` | cm 或 degree | 關鍵時刻的單點值卡 |
 | `throwing_hand` | `'right' \| 'left'` | — | 只顯示，不影響繪圖（見下） |
-| `videos` | `Record<string, string>` | — | **不使用**：指向交付包裡的 mp4／html，那些檔不在 public 下 |
+| `videos` | `Record<string, string>` | — | 三機 mp4 與 4panel html 的**檔名**（不是可用路徑）。前端不直接讀它——那些檔在 gitignore 的交付包裡，能播的版本由 `scripts/extract-pose-videos.mjs` 另外產出 |
 
 `frame_count` 存在但不採信——實際能索引的長度以 `timeseries.timestamp` 為準，兩者不一致時信後者。
 
