@@ -20,10 +20,31 @@
 | `pitch_*.xlsx` | 137 KB | 同一份資料的 Excel 版，三個工作表 `frame_angles` / `summary` / `release_metrics` | ❌ 對照用（欄位比 JSON 多，見下） |
 | `outcome.json` | 18 MB | 3D 骨架，格式同專案既有的 pose3d 樣本，但多了每點的 `quality` / `outlier_rejected` / `smoothed` / `interpolated` 旗標與三機 2D 偵測結果 | ❌ 本次未用 |
 | `release_entry.json` | 752 B | 出手點偵測結果（球與手腕的 3D 座標、判定方法） | ❌ 內容已含在 biomech 的 `release` |
-| `pitch_*_{1B,3B,HB}.frames.json` | 各 19 KB | 三台相機各自的影格時間戳陣列（各 750 筆） | ❌ 影片對齊用 |
-| `pitch_*_{1B,3B,HB}.mp4` | 共 63 MB | 三機原始影片 | ❌ |
-| `pitch_4panel.html` | 36 MB | 三機影片 + 3D pose 的四格對照（Plotly，影片以 base64 內嵌） | ❌ 參考用 |
+| `pitch_*_{1B,3B,HB}.frames.json` | 各 19 KB | 三台相機各自的影格時間戳陣列（各 **750** 筆——名目擷取窗長度的證據，見下） | ❌ 影片對齊不需要 |
+| `pitch_*_{1B,3B,HB}.mp4` | 共 63 MB | 三機原始影片，750 格 | ❌ **編碼是 mp4v，瀏覽器播不了**，見下 |
+| `pitch_4panel.html` | 36 MB | 三機影片 + 3D pose 的四格對照（Plotly，影片以 base64 內嵌） | ✅ 前端影片樣本的**實際來源**，見下 |
 | `release_3d_pose.html` / `.mp4` | 8.2 MB | 出手瞬間的 3D pose 動畫（Plotly v3.6.0） | ❌ 參考用 |
+
+## 影片：能播的那一版藏在 4panel 裡
+
+交付的三支 `pitch_*_{1B,3B,HB}.mp4` **前端用不了**——編碼是 `mp4v`（MPEG-4 Part 2），Chrome／Safari 都不支援，`<video>` 放不出來。
+
+同一份影片的 H.264 版本以 base64 內嵌在 `pitch_4panel.html` 裡，那才是可用的來源。兩版的差別：
+
+| | 交付的 .mp4 | 4panel 內嵌版 | 前端樣本（重壓後） |
+|---|---|---|---|
+| 編碼 | `mp4v`（播不了） | `avc1`（H.264） | `avc1` |
+| 影格數 | 750 | **748**（＝`frame_count`） | 748 |
+| 影格率 | 227fps | 30fps（慢動作重編碼） | 30fps |
+| 解析度 | 1440×1080 | 1440×1080 | 720×540 |
+| 關鍵影格 | 每 12 格 | **只有 3 個** | 每 10 格 |
+| 大小 | 共 63 MB | 共 20.6 MB | 共 6.8 MB |
+
+**重壓的主要理由是關鍵影格而不是檔案大小**：只有 3 個關鍵影格時，拖時間軸得從關鍵影格往下解上百格才畫得出目標格，明顯卡頓。產線在 `scripts/extract-pose-videos.mjs`（抽 base64 → ffmpeg `-g 10`），輸出到 `public/samples/pose-metrics/videos/`。骨架疊圖與出手紅框由演算法端燒錄在畫面上，前端不另外畫。
+
+**影格 1:1 對位**：內嵌版的 748 格與 `biomech.json` 的 `frame_count` 一致，影片第 N 格就是 `timeseries[N]`，`currentTime = frame / 30` 即可（4panel 自己的腳本也是這麼寫的：`const N=748, FPS=30, REL=637`）。所以 `frames.json` 的時間戳**對齊影片用不到**——那份是相機的原始擷取時間，與重編碼後的 30fps 時間軸無關。
+
+**750 是名目擷取窗長度**：三份 `frames.json` 各有整整 750 筆時間戳，跨度 2.995 秒（≈250fps）。這是前端 `NOMINAL_FRAME_SPAN = 750` 的依據——biomech.json 裡沒有任何欄位宣告這個長度，只能從這裡看出來。
 
 ## biomech.json 欄位
 
@@ -49,7 +70,7 @@
 - `at_foot_plant`：`stride_length` 一項
 - `peak`：5 個指標的峰值，各帶 `value` / `raw_value` / `frame_index` / `window` / `reliable`。**本樣本的 `elbow_varus_torque` 是 `reliable: false`**
 - `release`：出手影格、座標、偵測方法與信心值
-- `videos`：四個檔名字串，指向包內的 mp4／html。**前端不使用**（那些檔不在 public 下）
+- `videos`：四個檔名字串，指向包內的 mp4／html。前端不直接讀它——能播的樣本另由 `scripts/extract-pose-videos.mjs` 產出，見上一節
 
 ## 待與演算法端確認
 
