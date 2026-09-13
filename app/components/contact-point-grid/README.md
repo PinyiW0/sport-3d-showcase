@@ -42,6 +42,8 @@
 
 SVG 單位跟著 viewBox 縮放，圖塞進手機窄欄時照比例算的字會小到讀不了。元件用 `ResizeObserver` 量實際渲染寬度，把字級與點擊範圍換算回 SVG 單位後跟設計值取大者：輔助文字至少 11px（格號 10px）、點旁標籤至少 12px、灰點的點擊範圍半徑至少 11px（`MIN_TEXT_PX`／`MIN_LABEL_PX`／`MIN_HIT_RADIUS_PX`）。SSR 與還沒量到寬度時用設計值。
 
+顏色只用 Tailwind 內建色盤（`neutral`、`green`），不用 Nuxt UI 的 `primary`：新專案只要有 Tailwind 就畫得出來，不需要 Nuxt UI。
+
 元件本身只吃 `zone` 與 `x`／`z` 數字，不依賴 `bpe-data`——換任何資料來源都能用。BPE 結果 → props 的轉換（只取 `point_cm[0]`／`[2]`、忽略 `[1]`）在 showcase 做。
 
 ## 座標與視角

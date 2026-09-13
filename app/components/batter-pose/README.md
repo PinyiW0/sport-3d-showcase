@@ -260,8 +260,9 @@ age 0（最新、不透明）開 `depthWrite`，其餘半透明球不比深度�
 - `../bpe-data/`（結果檔解析、缺值規則）
 - `../scene3d/`（three 場景樣板、hover 標籤）
 - `../baseball-field/core/fieldGeometry.ts`（`HOME_PLATE_POINTS`）
-- `../baseball-spin/core/normalize-model.ts`（棒球模型歸一化）與 `public/models/baseball_detail.glb`——
-  只有要用棒球模型畫球時才需要
+- `../baseball-spin/core/normalize-model.ts`（棒球模型歸一化）——`core/swingScene.ts` 直接 import，一定要帶，
+  不用棒球模型也一樣
+- `public/models/baseball_detail.glb`——只有要用棒球模型畫球（傳 `ballModelUrl`）時才需要
 - 播放時鐘：`app/composables/useBpePlayback.ts`，或自備一個吐 `frame`/`playing`/`rate`/`loop`
   的等效時鐘（`core/playback.ts` 的推進數學是純函式，沒有 npm 依賴可直接搬）
 

@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { getStrikeZoneForLevel } from '../../baseball-field/core/batterLevels'
 import { ticksInRange, useContactGridScale } from './contactGridScale'
 
@@ -73,11 +73,16 @@ describe('ticksInRange', () => {
 const SAMPLE_DIR = 'public/samples/bpe'
 
 describe.skipIf(!existsSync(`${SAMPLE_DIR}/index.json`))('真實樣本（23 筆龍潭實測）', () => {
-  const index = JSON.parse(readFileSync(`${SAMPLE_DIR}/index.json`, 'utf8')) as { event_id: string }[]
-  const points = index
-    .map(entry => JSON.parse(readFileSync(`${SAMPLE_DIR}/events/${entry.event_id}.json`, 'utf8')))
-    .map(raw => raw?.payload?.contact?.point_cm as [number, number, number] | undefined)
-    .filter((p): p is [number, number, number] => Array.isArray(p))
+  // 讀檔放 beforeAll：describe 的內文在收集測試時就會執行，整組被 skipIf 跳過也一樣照跑，
+  // 直接寫在這裡的話，模組搬到沒有樣本的專案時會在收集階段報 ENOENT，而不是跳過
+  let points: [number, number, number][] = []
+  beforeAll(() => {
+    const index = JSON.parse(readFileSync(`${SAMPLE_DIR}/index.json`, 'utf8')) as { event_id: string }[]
+    points = index
+      .map(entry => JSON.parse(readFileSync(`${SAMPLE_DIR}/events/${entry.event_id}.json`, 'utf8')))
+      .map(raw => raw?.payload?.contact?.point_cm as [number, number, number] | undefined)
+      .filter((p): p is [number, number, number] => Array.isArray(p))
+  })
 
   it('14 筆有擊球點，全都落在預設視野內、不觸發擴大', () => {
     expect(points).toHaveLength(14)

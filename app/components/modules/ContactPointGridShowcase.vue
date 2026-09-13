@@ -85,11 +85,11 @@ const others = computed<ContactGridMarker[]>(() => overview.value.flatMap(({ ind
 const othersOutOfView = computed(() => others.value.filter(marker => !isInView(scale.value, marker)).length)
 
 const outcomeText = computed(() => outcomeLabel(result.value?.outcome ?? null))
-/** 判定結果標籤前的色點：擊中用主色，判定不確定用琥珀色，其他值中性灰 */
+/** 判定結果標籤前的色點：擊中用綠色（與九宮格的擊球點同色），判定不確定用琥珀色，其他值中性灰 */
 const outcomeDotClass = computed(() => {
   const value = result.value?.outcome
   if (value === 'hit')
-    return 'bg-primary-500'
+    return 'bg-green-500'
   return value === 'uncertain' ? 'bg-amber-400' : 'bg-neutral-400'
 })
 
@@ -199,7 +199,7 @@ const panelClass = computed(() => (lightCanvas.value
           data-testid="contact-grid-legend"
         >
           <span v-if="contactPoint" class="flex items-center gap-1.5">
-            <span class="size-2.5 rounded-full" :class="lightCanvas ? 'bg-primary-600' : 'bg-primary-500'" />本次擊球點
+            <span class="size-2.5 rounded-full" :class="lightCanvas ? 'bg-green-600' : 'bg-green-500'" />本次擊球點
           </span>
           <span v-if="others.length" class="flex items-center gap-1.5">
             <span class="size-2 rounded-full" :class="lightCanvas ? 'bg-neutral-500/45' : 'bg-neutral-400/45'" />其他 {{ others.length }} 筆（點一下切換）

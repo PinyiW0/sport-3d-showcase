@@ -1,6 +1,6 @@
-import type { RawBpeEnvelope, RawBpeIndexEntry } from './types'
+import type { BpeResult, RawBpeEnvelope, RawBpeIndexEntry } from './types'
 import { existsSync, readFileSync } from 'node:fs'
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { frameAtTime, isPoint3, nearestFrame, parseBpeResult, pickMetrics } from './parseBpeResult'
 import { BPE_METRICS, CONTACT_METRIC_KEYS, FLIGHT_METRIC_KEYS, SWING_METRIC_KEYS } from './types'
 
@@ -209,8 +209,14 @@ describe('播放時鐘查幀', () => {
 const SAMPLE_DIR = 'public/samples/bpe'
 
 describe.skipIf(!existsSync(`${SAMPLE_DIR}/index.json`))('真實樣本（23 筆龍潭實測）', () => {
-  const index = JSON.parse(readFileSync(`${SAMPLE_DIR}/index.json`, 'utf8')) as RawBpeIndexEntry[]
-  const results = index.map(entry => parseOk(JSON.parse(readFileSync(`${SAMPLE_DIR}/events/${entry.event_id}.json`, 'utf8'))))
+  // 讀檔放 beforeAll：describe 的內文在收集測試時就會執行，整組被 skipIf 跳過也一樣照跑，
+  // 直接寫在這裡的話，模組搬到沒有樣本的專案時會在收集階段報 ENOENT，而不是跳過
+  let index: RawBpeIndexEntry[] = []
+  let results: BpeResult[] = []
+  beforeAll(() => {
+    index = JSON.parse(readFileSync(`${SAMPLE_DIR}/index.json`, 'utf8')) as RawBpeIndexEntry[]
+    results = index.map(entry => parseOk(JSON.parse(readFileSync(`${SAMPLE_DIR}/events/${entry.event_id}.json`, 'utf8'))))
+  })
 
   it('23 筆全部通過檢查關卡，且都有 3D 動畫', () => {
     expect(results).toHaveLength(23)
@@ -218,7 +224,7 @@ describe.skipIf(!existsSync(`${SAMPLE_DIR}/index.json`))('真實樣本（23 筆�
   })
 
   it('四類分布：hit 完整 14、hit 無擊球點 1、uncertain 部分 2、uncertain 全缺 6', () => {
-    const classify = (r: typeof results[number]) => `${r.outcome}/${r.contact ? 'c' : '-'}/${r.landingM ? 'l' : '-'}/${r.metrics.length}`
+    const classify = (r: BpeResult) => `${r.outcome}/${r.contact ? 'c' : '-'}/${r.landingM ? 'l' : '-'}/${r.metrics.length}`
     const counts: Record<string, number> = {}
     for (const r of results)
       counts[classify(r)] = (counts[classify(r)] ?? 0) + 1

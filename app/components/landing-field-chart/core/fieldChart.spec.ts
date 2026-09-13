@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import {
   buildDistanceRingPoints,
   buildFairTerritoryPoints,
@@ -116,11 +116,16 @@ interface SampleEnvelope {
 }
 
 describe.skipIf(!existsSync(`${SAMPLE_DIR}/index.json`))('真實樣本（23 筆龍潭實測）', () => {
-  const index = JSON.parse(readFileSync(`${SAMPLE_DIR}/index.json`, 'utf8')) as { event_id: string }[]
-  const landings = index.map((entry) => {
-    const raw = JSON.parse(readFileSync(`${SAMPLE_DIR}/events/${entry.event_id}.json`, 'utf8')) as SampleEnvelope
-    const point = raw.payload?.predicted_landing_point_m
-    return point ? { x: point[0], y: point[1] } : null
+  // 讀檔放 beforeAll：describe 的內文在收集測試時就會執行，整組被 skipIf 跳過也一樣照跑，
+  // 直接寫在這裡的話，模組搬到沒有樣本的專案時會在收集階段報 ENOENT，而不是跳過
+  let landings: Array<{ x: number, y: number } | null> = []
+  beforeAll(() => {
+    const index = JSON.parse(readFileSync(`${SAMPLE_DIR}/index.json`, 'utf8')) as { event_id: string }[]
+    landings = index.map((entry) => {
+      const raw = JSON.parse(readFileSync(`${SAMPLE_DIR}/events/${entry.event_id}.json`, 'utf8')) as SampleEnvelope
+      const point = raw.payload?.predicted_landing_point_m
+      return point ? { x: point[0], y: point[1] } : null
+    })
   })
 
   it('23 筆中只有 #11（本壘後方 59 m）的落點會讓視野擴大', () => {

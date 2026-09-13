@@ -403,12 +403,13 @@ export const modules: ModuleSpec[] = [
         'app/components/batter-pose/（整包 cp，含 core/ 與單元測試：拖尾取樣、取景的點與視角、骨架角色分類、配色、相對擊球時間、缺值統計、播放時鐘）',
         'app/components/bpe-data/（解析、檢查關卡、缺值規則，必須一併帶走）',
         'app/components/scene3d/（Three.js 樣板層）與 app/components/baseball-field/（本壘板頂點）',
-        '要用棒球模型畫球 → app/components/baseball-spin/core/normalize-model.ts（歸一化）＋ public/models/baseball_detail.glb（約 700KB，與 baseball-spin 共用）',
+        'app/components/baseball-spin/core/normalize-model.ts（棒球模型歸一化；core/swingScene.ts 直接 import，不用模型也要帶）',
+        '要用棒球模型畫球 → public/models/baseball_detail.glb（約 700KB，與 baseball-spin 共用）',
         'app/composables/useBpePlayback.ts（rAF 播放時鐘）與 app/composables/useBpeEvents.ts（樣本載入）；接真 API 時保留前者、換掉後者',
         'app/composables/useLightCanvas.ts（「淺色畫布」開關，三個 BPE 模組共用）',
         'public/samples/bpe/ 與 scripts/import-bpe-samples.mjs（換一批交付資料時重跑；交付包不進版控）',
       ],
-      dependencies: ['Nuxt 4（元件靠 auto-import 取得 ref/onMounted 等，非 Nuxt 環境需自行補 import）', 'three', '@types/three（dev）', 'tailwindcss（圖例與元件的 class 樣式）'],
+      dependencies: ['模組本身不需要 Nuxt：元件明確 import vue，已在沒有 Nuxt、沒有 Nuxt UI 的純 Vue 專案通過型別檢查與單元測試；showcase 與 useBpePlayback／useBpeEvents 才需要 Nuxt 4', 'three', '@types/three（dev）', 'tailwindcss（圖例與元件的 class 樣式，只用內建色盤，不需要 Nuxt UI）'],
       flexPoints: [
         '球的外觀 ballModelUrl：給 glb 網址就用模型畫球，不給就畫規範的紅球',
         '深淺兩套配色（core/swingTheme.ts 的 SWING_THEME：背景漸層、地面微光、格線、左右半身、軀幹、頭部、球棒、本壘板、箭頭）——圖例自動跟著換',
@@ -472,7 +473,7 @@ export const modules: ModuleSpec[] = [
         'showcase 另用 app/composables/useBpeOverview.ts（全部事件疊圖）、useBpeEventStepper.ts（上一筆／下一筆與 ← →）、useLightCanvas.ts（淺色畫布開關）',
         'public/samples/bpe/ 與 scripts/import-bpe-samples.mjs（換一批交付資料時重跑；交付包不進版控）',
       ],
-      dependencies: ['Nuxt 4（showcase 靠 auto-import 取得 ref/computed，模組本身只 import vue）', 'tailwindcss（線條與文字的顏色 class）'],
+      dependencies: ['Nuxt 4（只有 showcase 需要，靠 auto-import 取得 ref/computed；模組本身只 import vue，已在沒有 Nuxt 的純 Vue 專案通過型別檢查與單元測試）', 'tailwindcss（線條與文字的顏色 class，只用內建色盤 neutral／green／red，不需要 Nuxt UI）'],
       flexPoints: [
         '好球帶 zone：有實際打者身高時傳 getStrikeZone(身高) 最準，級別代表身高只是後備',
         '擊球點半徑 pointRadius（預設 3.65 cm = 真實球半徑）與輔助線開關 showGuides',
@@ -528,7 +529,7 @@ export const modules: ModuleSpec[] = [
         'showcase 另用 app/composables/useBpeOverview.ts（全部事件疊圖）、useBpeEventStepper.ts（上一筆／下一筆與 ← →）、useLightCanvas.ts（淺色畫布開關）',
         'public/samples/bpe/ 與 scripts/import-bpe-samples.mjs（換一批交付資料時重跑；交付包不進版控）',
       ],
-      dependencies: ['Nuxt 4（showcase 靠 auto-import 取得 ref/computed，模組本身只 import vue）', 'tailwindcss（線條與文字的顏色 class）'],
+      dependencies: ['Nuxt 4（只有 showcase 需要，靠 auto-import 取得 ref/computed；模組本身只 import vue，已在沒有 Nuxt 的純 Vue 專案通過型別檢查與單元測試）', 'tailwindcss（線條與文字的顏色 class，只用內建色盤 neutral／green／red，不需要 Nuxt UI）'],
       flexPoints: [
         '落點旁的標籤 label（字串或一行一項的陣列；showcase 放預測飛行距離與擊球方向）',
         '其他事件 others（id／x／y／label）與點選事件 select；最小字級與點擊範圍 MIN_TEXT_PX／MIN_LABEL_PX／MIN_HIT_RADIUS_PX（LandingFieldChart.vue）',

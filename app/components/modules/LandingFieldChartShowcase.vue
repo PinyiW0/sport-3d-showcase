@@ -77,11 +77,11 @@ const othersOutOfView = computed(() => others.value.filter(marker => !isInViewpo
 const PRIMARY_FLIGHT_KEYS: readonly BpeMetricKey[] = ['distance', 'exit_velocity', 'launch_angle']
 
 const outcomeText = computed(() => outcomeLabel(result.value?.outcome ?? null))
-/** 判定結果標籤前的色點：擊中用主色，判定不確定用琥珀色，其他值中性灰 */
+/** 判定結果標籤前的色點：擊中用綠色，判定不確定用琥珀色，其他值中性灰 */
 const outcomeDotClass = computed(() => {
   const value = result.value?.outcome
   if (value === 'hit')
-    return 'bg-primary-500'
+    return 'bg-green-500'
   return value === 'uncertain' ? 'bg-amber-400' : 'bg-neutral-400'
 })
 
