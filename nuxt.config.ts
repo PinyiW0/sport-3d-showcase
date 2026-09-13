@@ -21,6 +21,14 @@ export default defineNuxtConfig({
     },
   },
   modules: ['@nuxt/ui', '@nuxt/eslint', '@pinia/nuxt', 'pinia-plugin-persistedstate/nuxt'],
+  // 整站固定深色。Nuxt UI 預設跟著瀏覽器走（preference: 'system'、fallback: 'light'），
+  // 本站又沒有深淺色切換鈕——瀏覽器回報淺色或沒有偏好時就整頁變白，使用者也切不回來。
+  // storageKey 換新名字：瀏覽器裡舊的 nuxt-color-mode 已經存成 'system'，存著的值會蓋過這裡的預設
+  colorMode: {
+    preference: 'dark',
+    fallback: 'dark',
+    storageKey: 'sport-3d-color-mode',
+  },
   eslint: {
     config: {
       standalone: false,
