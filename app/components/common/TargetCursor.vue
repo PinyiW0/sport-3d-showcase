@@ -8,7 +8,7 @@
  *
  * 依本專案規範改寫的三處：
  * - 配色改吃 currentColor：原版四角與圓點寫死 border-white／bg-white，
- *   本專案 colorMode 預設是 light，白底上整個游標會消失
+ *   淺色模式的白底上整個游標會消失（本專案現在預設深色，但淺色仍要能用）
  * - reduced-motion 不自轉：自轉是 gsap timeline，繞得過 main.css 的 CSS guard
  *   （creative-direction §4 硬原則 1）。吸附仍在，只是不轉
  * - gsap timeline 與 DOM 參照不放 ref：Vue 的深層代理會包住 timeline 的內部狀態，
