@@ -65,6 +65,9 @@ const MODULES = [
   'strike-zone-grid',
   'pitch-distribution',
   'pose-metrics-chart',
+  'batter-pose-skeleton',
+  'contact-point-grid',
+  'landing-field-chart',
 ]
 
 /**
@@ -118,6 +121,10 @@ async function capture(browser, slug) {
     type: 'jpeg',
     quality: 82,
   })
+
+  // 通知頁面「poster 截完了」：要讓 poster 停在某一格、錄影才開始動的模組（batter-pose-skeleton
+  // 停在擊球瞬間）聽這個事件起播。靠頁面自己計時的話，機器快慢會讓 poster 落在任意位置
+  await page.evaluate(() => window.dispatchEvent(new Event('preview-poster-taken')))
 
   // 錄影從 context 建立就開始，這段是資料 fetch 與 3D 初始化的空白畫面，錄完要裁掉
   const contentStartSec = (Date.now() - startedAt) / 1000
