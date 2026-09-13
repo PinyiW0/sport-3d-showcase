@@ -189,7 +189,7 @@ onBeforeUnmount(teardown)
         v-for="option in VIEW_OPTIONS"
         :key="option.value"
         type="button"
-        class="px-2 py-1 transition-colors focus-visible:ring-2 focus-visible:ring-primary-500 sm:px-2.5"
+        class="px-2 py-1 transition-colors focus-visible:ring-2 focus-visible:ring-green-500 sm:px-2.5"
         :class="view === option.value
           ? (props.dark ? 'bg-white/15 text-white' : 'bg-neutral-900/10 text-neutral-900')
           : (props.dark ? 'text-neutral-400 hover:text-neutral-100' : 'text-neutral-500 hover:text-neutral-900')"

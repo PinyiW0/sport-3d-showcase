@@ -44,8 +44,10 @@ const emit = defineEmits<{ select: [id: number] }>()
 
 // 深淺兩套線條與文字配色。視覺層級：擊球點 → 好球帶外框 → 地面線 → 格線與刻度 → 其他事件的點 → 格號。
 // 擊球點與文字的描邊（halo）是底色：點壓在格線上、字壓在線上時邊緣分得開。
-// 淺色底是 neutral-100，所以本壘板用白色填色才看得出來；擊球點深一階（primary-600），
-// primary-500 在淺底上對比不到 3:1，點會發虛。
+// 淺色底是 neutral-100，所以本壘板用白色填色才看得出來；擊球點深一階（green-600），
+// green-500 在淺底上對比不到 3:1，點會發虛。
+// 顏色只用 Tailwind 內建色盤（neutral、green），不用 Nuxt UI 的 primary：搬到沒有 Nuxt UI 的專案時，
+// primary-* 沒有定義，擊球點會變成預設的黑色填色，深色畫布上等於看不到。green 與本站 primary 同色。
 const TONES = {
   light: {
     ground: 'stroke-neutral-500',
@@ -54,8 +56,8 @@ const TONES = {
     text: 'fill-neutral-500',
     cellNumber: 'fill-neutral-400',
     zone: 'stroke-neutral-700',
-    guide: 'stroke-primary-600',
-    point: 'fill-primary-600 stroke-neutral-100',
+    guide: 'stroke-green-600',
+    point: 'fill-green-600 stroke-neutral-100',
     pointLabel: 'fill-neutral-800',
     other: 'fill-neutral-500/40 group-hover:fill-neutral-700 group-focus-visible:fill-neutral-700',
     halo: 'stroke-neutral-100',
@@ -68,8 +70,8 @@ const TONES = {
     text: 'fill-neutral-400',
     cellNumber: 'fill-neutral-600',
     zone: 'stroke-neutral-300',
-    guide: 'stroke-primary-500',
-    point: 'fill-primary-500 stroke-neutral-900',
+    guide: 'stroke-green-500',
+    point: 'fill-green-500 stroke-neutral-900',
     pointLabel: 'fill-neutral-100',
     other: 'fill-neutral-400/40 group-hover:fill-neutral-200 group-focus-visible:fill-neutral-200',
     halo: 'stroke-neutral-900',

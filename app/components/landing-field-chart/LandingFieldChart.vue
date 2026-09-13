@@ -59,9 +59,11 @@ const emit = defineEmits<{ select: [id: number] }>()
 // 落點與本壘到落點的虛線用紅色：界內區是綠色，紅點在上面最跳，也跟打擊姿態的紅球同一個顏色。
 // 落點與標籤文字的描邊（halo）是底色，壓在距離弧上時邊緣分得開。淺色的落點深一階（red-600），
 // 淺底疊上綠色界內區後，red-500 的對比只剩 3:1 左右，點會發虛。
+// 顏色只用 Tailwind 內建色盤（neutral、green、red），不用 Nuxt UI 的 primary：搬到沒有 Nuxt UI 的專案時，
+// primary-* 沒有定義，界內區會變成預設的黑色填色，整片球場塗黑。green 與本站 primary 同色。
 const TONES = {
   light: {
-    fair: 'fill-primary-500/10',
+    fair: 'fill-green-500/10',
     ring: 'stroke-neutral-400/60',
     ringLabel: 'fill-neutral-500',
     infield: 'stroke-neutral-400/70',
@@ -78,7 +80,7 @@ const TONES = {
     empty: 'fill-neutral-500',
   },
   dark: {
-    fair: 'fill-primary-500/10',
+    fair: 'fill-green-500/10',
     ring: 'stroke-neutral-600/60',
     ringLabel: 'fill-neutral-500',
     infield: 'stroke-neutral-600/70',
