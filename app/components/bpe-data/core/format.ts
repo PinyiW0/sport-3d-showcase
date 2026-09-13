@@ -43,11 +43,41 @@ export function formatMetricBrief(value: number, unit: string): string {
   return joinUnit((Math.round(value * 10) / 10).toFixed(1).replace('-', '−'), unit)
 }
 
+/**
+ * 擊球方向的精簡寫法：講偏哪一邊，角度取絕對值（2.9 → 「一壘側 2.9°」）。
+ *
+ * 規範只寫「擊球方向（左右）」，沒有定義正負代表哪一邊。這裡的「正值＝一壘側」是從樣本推定的：
+ * 23 筆裡有落點的 17 筆，16 筆的方向與落點 x（規範明定 +x 為一壘方向）同號；
+ * 唯一例外事件 #20 的落點 x 是 −0.11 m，幾乎在正中。演算法端確認前都只是推定。
+ * 四捨五入到一位小數後是 0 的寫「正中」，不硬分邊。
+ */
+export function formatExitDirectionBrief(value: number): string {
+  const rounded = Math.round(value * 10) / 10
+  if (rounded === 0)
+    return '正中 0.0°'
+  return `${rounded > 0 ? '一壘側' : '三壘側'} ${Math.abs(rounded).toFixed(1)}°`
+}
+
 function joinUnit(text: string, unit: string): string {
   const shown = formatUnit(unit)
   if (shown === '')
     return text
   return shown === '°' ? `${text}°` : `${text} ${shown}`
+}
+
+/**
+ * 判定結果的中文：畫布左上角的標籤用。表上沒有的值原樣顯示，不猜；null 回傳 null（不畫標籤）。
+ * 規範只列出值、沒有逐一定義，uncertain 寫「判定不確定」而不是「沒打到」。
+ */
+const OUTCOME_LABELS: Record<string, string> = {
+  hit: '擊中',
+  uncertain: '判定不確定',
+}
+
+export function outcomeLabel(outcome: string | null): string | null {
+  if (outcome == null)
+    return null
+  return OUTCOME_LABELS[outcome] ?? outcome
 }
 
 export interface BpeEventIdParts {

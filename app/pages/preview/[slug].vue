@@ -361,14 +361,15 @@ const ready = computed(() => {
       />
     </div>
 
-    <!-- 九宮格 viewBox 是直式（約 174 × 228），以高度為準塞進畫布，左右留黑邊 -->
-    <div v-else-if="slug === 'contact-point-grid'" :style="{ height: `${PREVIEW_HEIGHT}px` }" class="aspect-3/4">
-      <ContactPointGrid :zone="bpeZone" :point="bpeContactPoint" />
+    <!-- 九宮格 viewBox 是直式，以高度為準塞進畫布，左右留黑邊。容器要比 SVG 窄一點（7:10）：
+         這麼窄的畫面元件會放大字級、上下邊距跟著變高，容器比 SVG 矮的話下緣的刻度與方位字會被裁掉 -->
+    <div v-else-if="slug === 'contact-point-grid'" :style="{ height: `${PREVIEW_HEIGHT}px` }" class="aspect-[7/10]">
+      <ContactPointGrid :zone="bpeZone" :point="bpeContactPoint" dark />
     </div>
 
     <!-- 球場圖 viewBox 約 160 × 138，同樣以高度為準 -->
     <div v-else-if="slug === 'landing-field-chart'" :style="{ height: `${PREVIEW_HEIGHT}px` }" class="aspect-7/6">
-      <LandingFieldChart :landing="bpeLanding" :show-decorations="true" />
+      <LandingFieldChart :landing="bpeLanding" :show-decorations="true" dark />
     </div>
 
     <!-- dark：這兩支的畫布底色寫在元件內（Plotly 白畫布 / three.js 白場景），

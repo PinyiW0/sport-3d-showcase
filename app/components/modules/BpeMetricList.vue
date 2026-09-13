@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { BpeMetricKey, BpeMetricValue } from '~/components/bpe-data/core/types'
-import { formatMetric, formatMetricBrief } from '~/components/bpe-data/core/format'
+import { formatExitDirectionBrief, formatMetric, formatMetricBrief } from '~/components/bpe-data/core/format'
 import { pickMetrics } from '~/components/bpe-data/core/parseBpeResult'
 import { BPE_METRICS } from '~/components/bpe-data/core/types'
 
@@ -8,12 +8,15 @@ import { BPE_METRICS } from '~/components/bpe-data/core/types'
 // 缺了哪幾項另起一行明說——規範要求「不顯示」，但完全無聲會讓人以為版面漏畫。
 //
 // 數字用精簡寫法（一位小數、秒改毫秒）一眼讀；原始值與欄位名稱放在提示裡（滑鼠停在卡片上），
-// 精確值隨時看得到。primary 給了就分主次：主要幾項大卡片，其餘縮成一行一項。
+// 精確值隨時看得到。primary 給了就分主次：主要幾項大卡片（依 primary 的順序），其餘縮成一行一項。
+//
+// 欄數與數字字級看面板自己有多寬（container query），不看整個視窗：同一個面板放在整頁寬（打擊姿態）
+// 與畫布旁的窄欄（九宮格、球場圖）都排得好——窄欄裡「102.7 km/h」用大字會被擠成兩行。
 const props = defineProps<{
   metrics: readonly BpeMetricValue[]
   keys: readonly BpeMetricKey[]
   title: string
-  /** 放大顯示的幾項；不給就全部同一個權重 */
+  /** 放大顯示的幾項（依陣列順序排）；不給就全部同一個權重 */
   primary?: readonly BpeMetricKey[]
   /** 標題下的一句說明（例如數字的意思、跟哪個模組的數字不要搞混） */
   description?: string
@@ -21,7 +24,7 @@ const props = defineProps<{
 
 const shown = computed(() => pickMetrics(props.metrics, props.keys))
 const primaryShown = computed(() =>
-  props.primary ? shown.value.filter(m => props.primary!.includes(m.key)) : shown.value,
+  props.primary ? pickMetrics(shown.value, props.primary) : shown.value,
 )
 const secondaryShown = computed(() =>
   props.primary ? shown.value.filter(m => !props.primary!.includes(m.key)) : [],
@@ -34,6 +37,13 @@ const missingLabels = computed(() => {
     .map(key => BPE_METRICS.find(def => def.key === key)!.label)
 })
 
+/** 精簡寫法；擊球方向另外講偏哪一邊（「一壘側 2.9°」），光看正負號讀不出方向 */
+function briefValue(metric: BpeMetricValue): string {
+  if (metric.key === 'exit_direction' && metric.unit === 'degree')
+    return formatExitDirectionBrief(metric.value)
+  return formatMetricBrief(metric.value, metric.unit)
+}
+
 /** 提示：欄位名稱與原始值，例「bat_speed = 67.538 km/h（原始值）」 */
 function rawTitle(metric: BpeMetricValue): string {
   return `${metric.key} = ${formatMetric(metric.value, metric.unit)}（原始值）`
@@ -41,7 +51,7 @@ function rawTitle(metric: BpeMetricValue): string {
 </script>
 
 <template>
-  <div class="space-y-3" data-testid="bpe-metric-list">
+  <div class="@container space-y-3" data-testid="bpe-metric-list">
     <div class="space-y-1">
       <p class="text-xs font-semibold uppercase tracking-wider text-neutral-500">
         {{ title }}
@@ -51,7 +61,11 @@ function rawTitle(metric: BpeMetricValue): string {
       </p>
     </div>
 
-    <div v-if="primaryShown.length" class="grid grid-cols-2 gap-3 lg:grid-cols-3">
+    <!-- 兩欄時張數是奇數，最後一張橫跨兩欄，不留半邊空格；三欄時不跨 -->
+    <div
+      v-if="primaryShown.length"
+      class="grid grid-cols-2 gap-3 @max-2xl:[&>*:last-child:nth-child(odd)]:col-span-2 @2xl:grid-cols-3"
+    >
       <div
         v-for="metric in primaryShown"
         :key="metric.key"
@@ -62,13 +76,13 @@ function rawTitle(metric: BpeMetricValue): string {
         <p class="text-sm text-neutral-600 dark:text-neutral-400">
           {{ metric.label }}
         </p>
-        <p class="mt-1 text-xl font-semibold tabular-nums text-neutral-900 sm:text-2xl dark:text-white">
-          {{ formatMetricBrief(metric.value, metric.unit) }}
+        <p class="mt-1 whitespace-nowrap text-xl font-semibold tabular-nums text-neutral-900 @2xl:text-2xl dark:text-white">
+          {{ briefValue(metric) }}
         </p>
       </div>
     </div>
 
-    <dl v-if="secondaryShown.length" class="grid grid-cols-2 gap-x-6 gap-y-2 lg:grid-cols-3">
+    <dl v-if="secondaryShown.length" class="grid grid-cols-1 gap-x-6 gap-y-2 @sm:grid-cols-2 @2xl:grid-cols-3">
       <div
         v-for="metric in secondaryShown"
         :key="metric.key"
@@ -80,7 +94,7 @@ function rawTitle(metric: BpeMetricValue): string {
           {{ metric.label }}
         </dt>
         <dd class="text-sm font-medium tabular-nums text-neutral-900 dark:text-white">
-          {{ formatMetricBrief(metric.value, metric.unit) }}
+          {{ briefValue(metric) }}
         </dd>
       </div>
     </dl>

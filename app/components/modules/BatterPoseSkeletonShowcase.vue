@@ -29,17 +29,8 @@ const swing = computed(() => result.value?.swing ?? null)
 
 const { frame, playing, rate, loop, toggle, step, seek, jumpToContact } = useBpePlayback(swing)
 
-// 畫布配色：預設跟著頁面（整站目前固定深色），可以切成淺色畫布——只切這個模組的畫布，頁面其他部分不動。
-// colorMode 在 SSR 讀不到使用者的系統偏好，在 onMounted 才同步，
-// 避免 server／client 算出不同的圖例顏色造成 hydration 不一致
-const colorMode = useColorMode()
-const lightCanvas = ref(false)
-onMounted(() => {
-  lightCanvas.value = colorMode.value === 'light'
-})
-watch(() => colorMode.value, (mode) => {
-  lightCanvas.value = mode === 'light'
-})
+// 畫布配色：預設跟著頁面，可以切成淺色畫布（規則見 useLightCanvas）
+const lightCanvas = useLightCanvas()
 const dark = computed(() => !lightCanvas.value)
 
 /** USlider 需要可寫的 v-model，拖曳時直接呼叫 seek()（暫停並跳到該幀）。 */
