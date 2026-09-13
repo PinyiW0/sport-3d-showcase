@@ -29,6 +29,18 @@ export interface ContactPoint {
   z: number
 }
 
+/** 疊在圖上的其他事件擊球點：id 由呼叫端決定（例如事件索引），點選時原樣回傳 */
+export interface ContactGridMarker extends ContactPoint {
+  id: number
+  /** 滑鼠提示與讀屏文字；不給就寫「事件 id」 */
+  label?: string
+}
+
+/** 點在不在視野內（含邊界）；視野外的其他事件不畫，也不為它們擴大視野 */
+export function isInView(scale: Pick<ContactGridScale, 'minX' | 'maxX' | 'minZ' | 'maxZ'>, point: ContactPoint): boolean {
+  return point.x >= scale.minX && point.x <= scale.maxX && point.z >= scale.minZ && point.z <= scale.maxZ
+}
+
 export interface SvgPoint {
   x: number
   y: number

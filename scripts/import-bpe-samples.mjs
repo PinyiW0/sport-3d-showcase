@@ -6,9 +6,13 @@
  *   node scripts/import-bpe-samples.mjs <參考包的 algorithm 目錄>
  *   node scripts/import-bpe-samples.mjs ~/Desktop/workplace/baseball-punch/reference/algorithm
  *
- * 只做一件事：讀 events/index.json 與其列出的每一筆 events/<event_id>.json，
+ * 讀 events/index.json 與其列出的每一筆 events/<event_id>.json，
  * 去掉縮排空白後原樣寫出。欄位與數值一律不改——原檔每筆約 550KB，
  * 其中約七成是縮排與換行，改成單行後約 160KB，23 筆合計約 3.6MB。
+ *
+ * 另外寫一份 overview.json：每筆同一份結果、只拿掉 payload 裡的 skeleton 與 animation
+ * （九成以上的體積），其餘欄位原樣保留。擊球點九宮格與球場圖把全部事件疊在同一張圖上時讀這份，
+ * 不必把 23 筆完整檔（3.6MB）全抓下來；前端照樣過 parseBpeResult 的檢查關卡。
  *
  * 參考包不進版控（交付包是唯讀參考），換一批資料就重跑這支。
  */
@@ -54,13 +58,27 @@ function compactJson(value) {
   return JSON.stringify(value)
 }
 
+/** 結果檔去掉骨架與動畫：payload 不是物件（檢查關卡會擋下的檔）就原樣保留，不替它判斷 */
+function withoutAnimation(envelope) {
+  const payload = envelope?.payload
+  if (payload === null || typeof payload !== 'object' || Array.isArray(payload))
+    return envelope
+  const { skeleton: _skeleton, animation: _animation, ...rest } = payload
+  return { ...envelope, payload: rest }
+}
+
 let total = 0
+const overview = []
 for (const entry of index) {
   const raw = await readFile(join(eventsDir, `${entry.event_id}.json`), 'utf8')
-  const compact = `${compactJson(JSON.parse(raw))}\n`
+  const envelope = JSON.parse(raw)
+  const compact = `${compactJson(envelope)}\n`
   await writeFile(join(OUT_DIR, 'events', `${entry.event_id}.json`), compact)
   total += compact.length
+  overview.push({ event_id: entry.event_id, result: withoutAnimation(envelope) })
 }
 await writeFile(join(OUT_DIR, 'index.json'), `${JSON.stringify(index, null, 2)}\n`)
+// 一筆一行：整份單行時 diff 看不出是哪一筆變了
+await writeFile(join(OUT_DIR, 'overview.json'), `[\n${overview.map(item => `  ${compactJson(item)}`).join(',\n')}\n]\n`)
 
 console.log(`已匯入 ${index.length} 筆到 public/samples/bpe/（events 合計 ${(total / 1024 / 1024).toFixed(2)} MB）`)

@@ -23,6 +23,17 @@ describe('landingFieldChartShowcase', () => {
     expect(wrapper.text()).toContain('距離弧與內野')
   })
 
+  it('有「淺色畫布」開關', async () => {
+    const wrapper = await mountSuspended(LandingFieldChartShowcase)
+    expect(wrapper.text()).toContain('淺色畫布')
+  })
+
+  it('有上一筆／下一筆按鈕', async () => {
+    const wrapper = await mountSuspended(LandingFieldChartShowcase)
+    expect(wrapper.find('button[aria-label="上一筆"]').exists()).toBe(true)
+    expect(wrapper.find('button[aria-label="下一筆"]').exists()).toBe(true)
+  })
+
   it('說明文字講清楚球場邊界照畫、預測飛行距離的限制', async () => {
     const wrapper = await mountSuspended(LandingFieldChartShowcase)
     const text = wrapper.text()

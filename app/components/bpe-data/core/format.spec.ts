@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { eventLabel, formatMetric, formatMetricBrief, formatNumber, formatUnit, parseEventId } from './format'
+import { eventLabel, formatExitDirectionBrief, formatMetric, formatMetricBrief, formatNumber, formatUnit, outcomeLabel, parseEventId } from './format'
 
 describe('數值格式化', () => {
   it('原樣顯示、不四捨五入：小數位數不固定是資料本身的樣子', () => {
@@ -39,6 +39,16 @@ describe('精簡寫法', () => {
   it('趨近 0 的負數不會顯示成「−0.0」', () => {
     expect(formatMetricBrief(-0.04, 'degree')).toBe('0.0°')
   })
+
+  it('擊球方向講偏哪一邊：正值一壘側、負值三壘側，角度取絕對值', () => {
+    expect(formatExitDirectionBrief(2.9)).toBe('一壘側 2.9°')
+    expect(formatExitDirectionBrief(-35.64)).toBe('三壘側 35.6°')
+  })
+
+  it('擊球方向四捨五入後是 0 就寫正中，不硬分邊', () => {
+    expect(formatExitDirectionBrief(0.04)).toBe('正中 0.0°')
+    expect(formatExitDirectionBrief(-0.04)).toBe('正中 0.0°')
+  })
 })
 
 describe('事件編號', () => {
@@ -52,6 +62,13 @@ describe('事件編號', () => {
 
   it('格式不符回傳 null', () => {
     expect(parseEventId('pitch_123')).toBeNull()
+  })
+
+  it('判定結果換成中文，表上沒有的值原樣顯示，null 不給標籤', () => {
+    expect(outcomeLabel('hit')).toBe('擊中')
+    expect(outcomeLabel('uncertain')).toBe('判定不確定')
+    expect(outcomeLabel('foul_tip')).toBe('foul_tip')
+    expect(outcomeLabel(null)).toBeNull()
   })
 
   it('選單標籤帶陣列索引，與參考實作網址 hash 同一套編號', () => {

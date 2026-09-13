@@ -13,6 +13,13 @@ export interface LandingPoint {
   y: number
 }
 
+/** 疊在圖上的其他事件落點：id 由呼叫端決定（例如事件索引），點選時原樣回傳 */
+export interface FieldMarker extends LandingPoint {
+  id: number
+  /** 滑鼠提示與讀屏文字；不給就寫「事件 id」 */
+  label?: string
+}
+
 // ---------------------------------------------------------------------------
 // 球場邊界（規範公式，不可改動）
 // ---------------------------------------------------------------------------
@@ -127,6 +134,11 @@ export function computeFieldViewport(landing: LandingPoint | null): FieldViewpor
   }
 
   return { xMin, xMax, yMin, yMax, expanded }
+}
+
+/** 點在不在視野內（含邊界）；視野外的其他事件不畫，也不為它們擴大視野 */
+export function isInViewport(viewport: FieldViewport, point: LandingPoint): boolean {
+  return point.x >= viewport.xMin && point.x <= viewport.xMax && point.y >= viewport.yMin && point.y <= viewport.yMax
 }
 
 export interface FieldScale {

@@ -88,6 +88,15 @@ export interface RawBpeIndexEntry {
   notes?: string
 }
 
+/**
+ * 樣本的 `overview.json` 一筆：同一份結果檔拿掉 payload 的 skeleton 與 animation
+ * （scripts/import-bpe-samples.mjs 產生）。順序與 index.json 相同。
+ */
+export interface RawBpeOverviewEntry {
+  event_id: string
+  result: RawBpeEnvelope
+}
+
 // ---------------------------------------------------------------------------
 // 13 項數值
 // ---------------------------------------------------------------------------

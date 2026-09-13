@@ -6,15 +6,20 @@
 
 | 檔案 | 責任 |
 |------|------|
-| `ContactPointGrid.vue` | SVG 渲染：地面線、本壘板正視窄帶、刻度、好球帶九宮格、擊球點與輔助線 |
+| `ContactPointGrid.vue` | SVG 渲染：地面線、本壘板正視窄帶、刻度、好球帶九宮格與格號、擊球點與輔助線、其他事件的灰點 |
 | `core/contactGridScale.ts` | 座標轉換、固定視野與超界擴大、九宮格幾何（純 TS + vue 的 computed，有單元測試） |
 | `app/components/baseball-field/core/fieldGeometry.ts` | **外部依賴**：好球帶邊界型別 `StrikeZoneBounds`、本壘板常數 `HOME_PLATE`、球半徑 `BALL_RADIUS`。整包 cp 時要一併帶走 |
-| `app/components/modules/ContactPointGridShowcase.vue` | 消費端 showcase：接 BPE 樣本、打者級別選單、輔助線開關（可用 NuxtUI，不隨模組搬走） |
+| `app/components/modules/ContactPointGridShowcase.vue` | 消費端 showcase：接 BPE 樣本、事件選單與上一筆／下一筆、打者級別選單、輔助線與淺色畫布開關、畫布標籤與圖例、數值面板（可用 NuxtUI，不隨模組搬走） |
 
 ## 用法
 
 ```vue
-<ContactPointGrid :zone="zone" :point="{ x: 10.2, z: 78.4 }" />
+<ContactPointGrid
+  :zone="zone"
+  :point="{ x: 10.2, z: 78.4 }"
+  :others="[{ id: 4, x: -21.9, z: 57.9, label: '事件 #4' }]"
+  @select="id => (selected = id)"
+/>
 ```
 
 | Prop | 型別 | 預設 | 說明 |
@@ -23,6 +28,19 @@
 | `point` | `{ x: number, z: number } \| null` | 必填 | 擊球點；`null` 表示這筆結果沒有擊球點，依規範不畫點 |
 | `pointRadius` | `number` | `BALL_RADIUS`（3.65） | 擊球點半徑（cm）。SVG 單位即 cm，預設值就是真實球的大小 |
 | `showGuides` | `boolean` | `true` | 擊球點到兩軸的虛線輔助線 |
+| `dark` | `boolean` | `false` | 深色配色。不跟頁面 colorMode 走；SVG 本身透明，底色由呼叫端鋪（淺色配 `neutral-100`、深色配 `neutral-900`，擊球點與文字的描邊就是這兩個底色） |
+| `others` | `ContactGridMarker[]` | `[]` | 其他事件的擊球點（`id`、`x`、`z`、選填 `label`），畫成淡灰小點、可點選。視野只依 `point` 決定，灰點不讓視野擴大，落在視野外的不畫——呼叫端要提示筆數可用 `core/contactGridScale.ts` 的 `isInView` 自己算 |
+| `pointTitle` | `string` | 點旁標籤 | 擊球點的滑鼠提示，showcase 放原始座標（含不使用的 y） |
+
+| 事件 | 參數 | 說明 |
+|------|------|------|
+| `select` | `id: number` | 點選（或 Tab 到灰點按 Enter／空白鍵）其他事件的灰點時發出，帶回該點的 `id` |
+
+點旁標籤一律一位小數（`x 0.5 · z 49.0 cm`），精確值放 `pointTitle`。標籤先放點的右邊，估字寬後右邊放不下才換左邊；標籤與沒有擊球點的提示字都有一圈底色描邊，壓在格線上仍讀得清楚。
+
+### 手機上的字級
+
+SVG 單位跟著 viewBox 縮放，圖塞進手機窄欄時照比例算的字會小到讀不了。元件用 `ResizeObserver` 量實際渲染寬度，把字級與點擊範圍換算回 SVG 單位後跟設計值取大者：輔助文字至少 11px（格號 10px）、點旁標籤至少 12px、灰點的點擊範圍半徑至少 11px（`MIN_TEXT_PX`／`MIN_LABEL_PX`／`MIN_HIT_RADIUS_PX`）。SSR 與還沒量到寬度時用設計值。
 
 元件本身只吃 `zone` 與 `x`／`z` 數字，不依賴 `bpe-data`——換任何資料來源都能用。BPE 結果 → props 的轉換（只取 `point_cm[0]`／`[2]`、忽略 `[1]`）在 showcase 做。
 
@@ -38,14 +56,14 @@
 
 預設固定 **x ∈ [−75, 75]、z ∈ [0, 200]（cm）**。23 筆樣本的擊球點 x 在 −21.9～40.9、z 在 15.2～168.0，全都裝得下且不會觸發擴大——固定視野讓不同事件的擊球點可以直接比位置，不會因為單一事件的落點而跳動縮放。
 
-擊球點落在預設視野外時（目前樣本沒有，但未來資料可能有），依規範「照座標畫，不裁切」（`baseball-field-coordinates.md` §9「不要只做 clamp」）：把視野擴大到剛好包住該點，再留 15 cm 邊。`core/contactGridScale.ts` 回傳的 `expanded` 旗標讓外面知道視野已經改變；showcase 用它在資訊列多補一句提示。
+擊球點落在預設視野外時（目前樣本沒有，但未來資料可能有），依規範「照座標畫，不裁切」（`baseball-field-coordinates.md` §9「不要只做 clamp」）：把視野擴大到剛好包住該點，再留 15 cm 邊。`core/contactGridScale.ts` 回傳的 `expanded` 旗標讓外面知道視野已經改變；showcase 用它在畫布上方加一個「已自動擴大」標籤。
 
 **取捨**：`core/contactGridScale.ts` 回傳的 `viewWidth`／`viewHeight` 就是資料視野本身（預設 150 × 200），不含任何邊距。左側 z 刻度、下方 x 刻度與方位字需要的畫布邊距（`ContactPointGrid.vue` 內的 `PAD` 常數）刻意留在元件裡處理，不混進 core——這樣 `useContactGridScale` 的回傳值測起來單純（1 個 SVG 單位就是 1 cm 資料座標，沒有額外偏移要扣），邊距純屬這個元件自己的排版決定，換一種畫面呈現不需要改 core。
 
 ## 搬移要一併帶走
 
 - `app/components/baseball-field/`（場地與好球帶常數的單一來源，`ContactPointGrid.vue` 與 `core/contactGridScale.ts` 都直接 import）
-- showcase 額外需要：`app/components/bpe-data/`、`app/composables/useBpeEvents.ts`、`app/components/modules/BpeMetricList.vue`（純元件本身不需要這三項）
+- showcase 額外需要：`app/components/bpe-data/`、`app/composables/useBpeEvents.ts`、`useBpeOverview.ts`（全部事件疊圖）、`useBpeEventStepper.ts`（上一筆／下一筆與 ← →）、`useLightCanvas.ts`（淺色畫布開關）、`app/components/modules/BpeMetricList.vue`（純元件本身都不需要）
 
 ## 已知限制
 

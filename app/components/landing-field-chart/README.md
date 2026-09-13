@@ -7,21 +7,43 @@
 
 | 檔案 | 責任 |
 |------|------|
-| `LandingFieldChart.vue` | SVG 渲染：球場邊界、裝飾、落點標記 |
+| `LandingFieldChart.vue` | SVG 渲染：球場邊界、裝飾、落點標記與標籤、其他事件的灰點 |
 | `core/fieldChart.ts` | 球場邊界公式、視野計算、座標縮放（純 TS，有單元測試） |
-| `app/components/modules/LandingFieldChartShowcase.vue` | 本專案專用的互動外殼：事件選單、裝飾開關（消費端，非本模組一部分） |
+| `app/components/modules/LandingFieldChartShowcase.vue` | 本專案專用的互動外殼：事件選單與上一筆／下一筆、裝飾與淺色畫布開關、畫布標籤與圖例、數值面板（消費端，非本模組一部分） |
 
 ## 用法
 
 ```vue
-<LandingFieldChart :landing="{ x: 2.047, y: 56.224 }" label="預測飛行距離 56.3 m" />
+<LandingFieldChart
+  :landing="{ x: 2.047, y: 56.224 }"
+  :label="['56.3 m', '一壘側 2.9°']"
+  :others="[{ id: 4, x: -16.1, y: 26.6, label: '事件 #4 · 31.1 m' }]"
+  @select="id => (selected = id)"
+/>
 ```
 
 | prop | 型別 | 預設 | 說明 |
 |------|------|------|------|
 | `landing` | `{ x: number, y: number } \| null` | 必填 | 預測落點，單位公尺；`null` 代表這筆結果沒有落點 |
-| `label` | `string \| undefined` | `undefined` | 落點標籤第二行，例如「預測飛行距離 56.3 m」。由呼叫端格式化好傳入——元件不依賴 `bpe-data`，不會自己組字串 |
+| `label` | `string \| string[] \| undefined` | `undefined` | 落點旁的標籤，給陣列就一行一項（第一行加粗），例如 `['56.3 m', '一壘側 2.9°']`；不給就只寫「預測落點」。由呼叫端格式化好傳入——元件不依賴 `bpe-data`，不會自己組字串 |
 | `showDecorations` | `boolean` | `true` | 距離弧、內野菱形、投手板點；關閉不影響落點位置，只是少了參考線 |
+| `dark` | `boolean` | `false` | 深色配色。不跟頁面 colorMode 走；SVG 本身透明，底色由呼叫端鋪（淺色配 `neutral-100`、深色配 `neutral-900`，落點與文字的描邊就是這兩個底色） |
+| `others` | `FieldMarker[]` | `[]` | 其他事件的落點（`id`、`x`、`y`、選填 `label`），畫成淡灰小點、可點選。視野只依 `landing` 決定，灰點不讓視野擴大，落在視野外的不畫——呼叫端要提示筆數可用 `core/fieldChart.ts` 的 `isInViewport` 自己算 |
+| `pointTitle` | `string` | 原始座標 | 落點的滑鼠提示 |
+
+| 事件 | 參數 | 說明 |
+|------|------|------|
+| `select` | `id: number` | 點選（或 Tab 到灰點按 Enter／空白鍵）其他事件的灰點時發出，帶回該點的 `id` |
+
+落點是紅色（本壘到落點的虛線也是）：界內區是綠色，紅點在上面最跳，也跟打擊姿態的紅球同一個顏色。
+標籤預設放在點的右上方，估字寬後右邊放不下換左邊，兩邊都放不下（手機上字相對大）就置中在點的正上方；
+標籤、本壘與中外野字都有一圈底色描邊，壓在距離弧或灰點上仍讀得清楚。
+
+### 手機上的字級
+
+SVG 單位是公尺，整張圖在手機上只有兩百多像素寬時，4 單位的字只剩約 6px。元件用 `ResizeObserver` 量實際渲染寬度，
+把字級、點的大小與點擊範圍換算回 SVG 單位後跟設計值取大者：輔助文字至少 11px（距離弧刻度 10px）、落點標籤至少 12px、
+灰點的點擊範圍半徑至少 11px（`MIN_TEXT_PX`／`MIN_LABEL_PX`／`MIN_HIT_RADIUS_PX`）。SSR 與還沒量到寬度時用設計值。
 
 元件本身**不依賴 bpe-data**：從 `RawBpePayload.predicted_landing_point_m`（`[x, y, z]`，公尺）到
 `{ x, y }` 的轉換由呼叫端（showcase）做，`z` 落地時恆為 0，本來就不使用。
@@ -59,7 +81,8 @@
 23 筆樣本裡只有事件 #11 的落點（本壘後方 y = −59.458 m）超出這個範圍。落點在視野外時，
 **照座標畫，不 clamp、不判斷界內外**——把視野擴大到剛好包住該點，再留 8 m 邊。
 `computeFieldViewport()` 回傳的 `expanded` 旗標讓呼叫端知道發生了這件事，可以在畫面上多講一句解釋
-（本模組的 showcase 就是這樣用的）。
+（本模組的 showcase 在畫布上方加一個標籤）。其他事件的灰點不影響視野：選別的事件時 #11 落在視野外，
+不畫出來，showcase 的圖例會寫「1 筆在目前視野外」。
 
 ## 搬移要一併帶走
 
@@ -68,7 +91,7 @@
 Showcase（`app/components/modules/LandingFieldChartShowcase.vue`）另外需要：
 
 - `app/components/bpe-data/`（BPE 結果的解析與 13 項數值）
-- `app/composables/useBpeEvents.ts`（樣本載入）
+- `app/composables/useBpeEvents.ts`（樣本載入）、`useBpeOverview.ts`（全部事件疊圖）、`useBpeEventStepper.ts`（上一筆／下一筆與 ← →）、`useLightCanvas.ts`（淺色畫布開關）
 - `app/components/modules/BpeMetricList.vue`（數值面板）
 
 ## 已知限制
@@ -81,3 +104,7 @@ Showcase（`app/components/modules/LandingFieldChartShowcase.vue`）另外需要
    #11 因超出預設視野需要擴大顯示，#3 在預設視野內。
 4. 23 筆樣本的 `notes` 都標註 `awaiting project-owner visual review`，數值尚未經人工確認，
    本模組一律照座標畫，不做合理性過濾。
+5. 擊球方向（`exit_direction`）的正負規範沒有定義。showcase 把正值寫成「一壘側」是從樣本推定的：
+   有落點的 17 筆裡 16 筆方向與落點 x 同號，例外的事件 #20 落點 x = −0.11 m、幾乎在正中。
+   方向角也不等於「本壘到落點」的方位角（事件 #16 差到 37°），兩者不能互相代替。
+6. 有 8 筆落點擠在本壘 10 m 內，灰點互相重疊，點下去選到的是最上面那一筆；要選特定一筆用事件選單或上一筆／下一筆。

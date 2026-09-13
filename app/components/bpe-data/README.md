@@ -20,7 +20,11 @@
 |------|------|
 | `core/types.ts` | 原檔（wire）型別、解析後型別、13 項數值定義與三模組分組 |
 | `core/parseBpeResult.ts` | 檢查關卡、缺值規則、骨頭分類（人體／球棒）、擊球幀、播放時鐘查幀 |
-| `core/format.ts` | 數值與單位的顯示寫法、事件編號拆解、事件選單標籤 |
+| `core/format.ts` | 數值與單位的顯示寫法、擊球方向的偏向寫法、判定結果中文、事件編號拆解、事件選單標籤 |
+
+樣本（`public/samples/bpe/`，`scripts/import-bpe-samples.mjs` 產生）除了 `index.json` 與逐筆 `events/`，
+還有一份 `overview.json`：同一批結果只拿掉 payload 的 `skeleton` 與 `animation`（23 筆約 33KB），
+擊球點九宮格與球場圖把全部事件疊在同一張圖上時讀它（`app/composables/useBpeOverview.ts`），每筆照樣過 `parseBpeResult()`。
 
 兩支 `.spec.ts` 都有合成資料的邊界案例；`parseBpeResult.spec.ts` 另用 `public/samples/bpe/` 的 23 筆真實樣本
 核對交接報告的逐筆數字（四類分布 14／1／2／6、事件 #20 無擊球點有落點、球體幀數等），樣本不在時自動跳過。
@@ -62,6 +66,9 @@
     只是顯示，旁邊的提示一定附上原始值（`BpeMetricList` 滑鼠停在卡片上就看得到欄位名稱與原始值）
 - 單位取資料的 `unit` 欄位；`degree` 顯示成 `°`，其他原樣。`unit` 缺少時不拿規範表補，只顯示數字
 - 負號換成 Unicode 減號（U+2212）
+- 擊球方向另用 `formatExitDirectionBrief`：講偏哪一邊、角度取絕對值（2.9 → 「一壘側 2.9°」，−35.64 → 「三壘側 35.6°」，
+  四捨五入後是 0 寫「正中 0.0°」）。正負代表哪一邊是推定，見下方待確認第 5 點
+- 判定結果用 `outcomeLabel` 換中文（hit → 擊中、uncertain → 判定不確定），表上沒有的值原樣顯示
 
 ## 未寫進規範、待演算法端確認
 
@@ -70,5 +77,7 @@
 2. 事件 #0–#9 與 #10–#22 用了兩個不同的 checkpoint
 3. 有擊球點的 14 筆 `contact.time_s` 與 `trigger_time_s` 完全相等；無擊球點時 `trigger_time_s` 仍有值
 4. BPE 的全稱沒有提供
+5. `exit_direction` 的正負代表哪一邊沒有定義。畫面寫成「正值＝一壘側」是從樣本推定：有落點的 17 筆裡 16 筆與落點 x 同號，
+   例外的事件 #20 落點 x = −0.11 m。方向角也不等於本壘到落點的方位角（事件 #16 差 37°）
 
 異常值（照規範照畫，但數值合理性待確認）見三個模組 README 的「已知限制」。

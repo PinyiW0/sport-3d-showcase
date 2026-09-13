@@ -16,16 +16,20 @@ describe('contactPointGrid', () => {
     const wrapper = render(point)
     const circle = wrapper.get('[data-testid="contact-point"]')
 
-    // 元件內部邊距（PAD）不對外開放，改用同一顆 core scale 反推期望值：
-    // 元件的 toSvg = 原始 scale.toSvg + 固定邊距，兩者的差值就是邊距本身。
+    // 元件內部邊距跟著字級走、不對外開放，改用同一顆 core scale 反推期望值：
+    // 元件的 toSvg = 原始 scale.toSvg + 邊距。地面線（第一條 line）畫在 z=0，
+    // 它的 x1／y1 與原始座標的差值就是左、上邊距。
     const scale = useContactGridScale(zone, point).value
-    const svg = wrapper.get('svg')
-    const [, , , viewBoxHeight] = svg.attributes('viewBox')!.split(' ').map(Number)
-    const padTop = viewBoxHeight! - scale.viewHeight - 20 // bottom pad 固定 20，見元件 PAD 常數
+    const ground = wrapper.get('line')
+    const rawGround = scale.toSvg(scale.minX, 0)
+    const padLeft = Number(ground.attributes('x1')) - rawGround.x
+    const padTop = Number(ground.attributes('y1')) - rawGround.y
     const raw = scale.toSvg(point.x, point.z)
 
-    expect(Number(circle.attributes('cx'))).toBeCloseTo(raw.x + 18, 1) // left pad 固定 18
-    expect(Number(circle.attributes('cy'))).toBeCloseTo(raw.y + padTop, 1)
+    expect(padLeft).toBeGreaterThan(0)
+    expect(padTop).toBeGreaterThan(0)
+    expect(Number(circle.attributes('cx'))).toBeCloseTo(raw.x + padLeft, 6)
+    expect(Number(circle.attributes('cy'))).toBeCloseTo(raw.y + padTop, 6)
   })
 
   it('沒有擊球點（point 為 null）時不畫點，並顯示提示文字', () => {
@@ -62,6 +66,42 @@ describe('contactPointGrid', () => {
   it('擊球點半徑可由 pointRadius 覆寫', () => {
     const wrapper = render({ x: 0, z: 70 }, { pointRadius: 10 })
     expect(wrapper.get('[data-testid="contact-point"]').attributes('r')).toBe('10')
+  })
+
+  it('dark 預設 false 用淺色配色，設為 true 換深色配色', () => {
+    const point = { x: 10, z: 80 }
+    // 擊球點描邊是底色：淺色底 neutral-100、深色底 neutral-900
+    expect(render(point).get('[data-testid="contact-point"]').classes()).toContain('stroke-neutral-100')
+    expect(render(point, { dark: true }).get('[data-testid="contact-point"]').classes()).toContain('stroke-neutral-900')
+  })
+
+  it('點旁標籤用一位小數，原始座標放在點的提示裡', () => {
+    const wrapper = render({ x: 0.458, z: 48.998 }, { pointTitle: '擊球點原始座標 x 0.458 · z 48.998 cm' })
+    expect(wrapper.get('[data-testid="contact-point-label"]').text()).toBe('x 0.5 · z 49.0 cm')
+    expect(wrapper.get('[data-testid="contact-point"] title').text()).toBe('擊球點原始座標 x 0.458 · z 48.998 cm')
+  })
+
+  it('其他事件的擊球點畫成可點選的灰點，點一下發出 select 帶回 id', async () => {
+    const wrapper = render({ x: 0, z: 70 }, { others: [{ id: 4, x: -21.9, z: 57.9 }, { id: 7, x: 38.2, z: 168 }] })
+    const markers = wrapper.findAll('[data-testid="contact-point-other"]')
+    expect(markers).toHaveLength(2)
+
+    await markers[1]!.trigger('click')
+    await markers[0]!.trigger('keydown', { key: 'Enter' })
+    expect(wrapper.emitted('select')).toEqual([[7], [4]])
+  })
+
+  it('落在目前視野外的其他事件不畫，也不會讓視野擴大', () => {
+    const inside = render({ x: 0, z: 70 })
+    const withFarOther = render({ x: 0, z: 70 }, { others: [{ id: 1, x: 300, z: 70 }] })
+    expect(withFarOther.find('[data-testid="contact-point-other"]').exists()).toBe(false)
+    expect(withFarOther.get('svg').attributes('viewBox')).toBe(inside.get('svg').attributes('viewBox'))
+  })
+
+  it('九格標出格號 1～9', () => {
+    const wrapper = render(null)
+    const numbers = wrapper.get('[data-testid="contact-grid-cell-numbers"]').findAll('text').map(t => t.text())
+    expect(numbers).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9'])
   })
 
   it('svg 帶有 role=img 與 aria-label', () => {
