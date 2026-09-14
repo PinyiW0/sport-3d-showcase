@@ -4,6 +4,7 @@ import { BATTER_LEVELS, getStrikeZoneForLevel } from '~/components/baseball-fiel
 import BaseballSpinViewer from '~/components/baseball-spin/BaseballSpinViewer.vue'
 import { parseSpinResult } from '~/components/baseball-spin/core/types'
 import BatterSwing3d from '~/components/batter-pose/BatterSwing3d.vue'
+import { formatExitDirectionBrief, formatMetricBrief } from '~/components/bpe-data/core/format'
 import SpinTiltClock from '~/components/clock-spin/SpinTiltClock.vue'
 import ContactPointGrid from '~/components/contact-point-grid/ContactPointGrid.vue'
 import LandingFieldChart from '~/components/landing-field-chart/LandingFieldChart.vue'
@@ -142,6 +143,28 @@ const bpeLanding = computed(() => {
   const point = bpeResult.value?.landingM
   return point ? { x: point[0], y: point[1] } : null
 })
+const bpeLandingLabel = computed(() => {
+  const metrics = bpeResult.value?.metrics ?? []
+  const distance = metrics.find(metric => metric.key === 'distance')
+  const direction = metrics.find(metric => metric.key === 'exit_direction')
+  const lines = [
+    ...(distance ? [formatMetricBrief(distance.value, distance.unit)] : []),
+    ...(direction?.unit === 'degree' ? [formatExitDirectionBrief(direction.value)] : []),
+  ]
+  return lines.length ? lines : undefined
+})
+let bpeFallback: ReturnType<typeof setTimeout> | undefined
+function startBpePreview() {
+  if (bpeTimer)
+    return
+  bpeTimer = setInterval(() => {
+    const cycle = bpeCycle.value
+    if (!cycle.length)
+      return
+    const at = cycle.indexOf(bpeSelected.value)
+    bpeSelected.value = cycle[(at + 1) % cycle.length]!
+  }, 900)
+}
 
 // --- batter-pose-skeleton：只循環擊球前後那一段 ---
 // 整段 2.3 秒大半是站姿，從頭播的 4 秒預覽拍不到揮棒。改成循環擊球前 60 幀到後 40 幀、
@@ -194,15 +217,10 @@ onMounted(() => {
       }, 700)
     }, 3000)
   }
-  // 900ms：每換一筆要抓一個約 160KB 的事件檔，太快會在上一筆還沒到手時又換下一筆
+  // 封面固定在代表事件；錄製端截完封面才輪播，直接開頁則延後自動起播。
   if (slug.value === 'contact-point-grid' || slug.value === 'landing-field-chart') {
-    bpeTimer = setInterval(() => {
-      const cycle = bpeCycle.value
-      if (!cycle.length)
-        return
-      const at = cycle.indexOf(bpeSelected.value)
-      bpeSelected.value = cycle[(at + 1) % cycle.length]!
-    }, 900)
+    window.addEventListener('preview-poster-taken', startBpePreview, { once: true })
+    bpeFallback = setTimeout(startBpePreview, 20_000)
   }
   if (slug.value === 'batter-pose-skeleton') {
     window.addEventListener('preview-poster-taken', startSwingPreview, { once: true })
@@ -230,6 +248,8 @@ onBeforeUnmount(() => {
   clearInterval(metricTimer)
   clearTimeout(metricDelay)
   clearInterval(bpeTimer)
+  clearTimeout(bpeFallback)
+  window.removeEventListener('preview-poster-taken', startBpePreview)
   cancelAnimationFrame(swingRaf)
   clearTimeout(swingFallback)
   window.removeEventListener('preview-poster-taken', startSwingPreview)
@@ -366,12 +386,12 @@ const ready = computed(() => {
     <!-- 九宮格 viewBox 是直式，以高度為準塞進畫布，左右留黑邊。容器要比 SVG 窄一點（7:10）：
          這麼窄的畫面元件會放大字級、上下邊距跟著變高，容器比 SVG 矮的話下緣的刻度與方位字會被裁掉 -->
     <div v-else-if="slug === 'contact-point-grid'" :style="{ height: `${PREVIEW_HEIGHT}px` }" class="aspect-[7/10]">
-      <ContactPointGrid :zone="bpeZone" :point="bpeContactPoint" dark />
+      <ContactPointGrid :zone="bpeZone" :point="bpeContactPoint" schematic dark />
     </div>
 
-    <!-- 球場圖 viewBox 約 160 × 138，同樣以高度為準 -->
-    <div v-else-if="slug === 'landing-field-chart'" :style="{ height: `${PREVIEW_HEIGHT}px` }" class="aspect-7/6">
-      <LandingFieldChart :landing="bpeLanding" :show-decorations="true" dark />
+    <!-- 球場圖含界外草地的 viewBox 為 188 × 172，保留上下留白避免預覽裁切 -->
+    <div v-else-if="slug === 'landing-field-chart'" :style="{ width: `${(PREVIEW_HEIGHT - 16) * 188 / 172}px` }">
+      <LandingFieldChart :landing="bpeLanding" :label="bpeLandingLabel" :show-decorations="true" dark />
     </div>
 
     <!-- dark：這兩支的畫布底色寫在元件內（Plotly 白畫布 / three.js 白場景），

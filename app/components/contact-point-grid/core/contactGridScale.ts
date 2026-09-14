@@ -78,6 +78,7 @@ export function ticksInRange(min: number, max: number, step: number): number[] {
 export function useContactGridScale(
   zone: MaybeRefOrGetter<StrikeZoneBounds>,
   point: MaybeRefOrGetter<ContactPoint | null>,
+  schematic: MaybeRefOrGetter<boolean> = false,
 ) {
   return computed<ContactGridScale>(() => {
     const z = toValue(zone)
@@ -85,6 +86,13 @@ export function useContactGridScale(
 
     let [minX, maxX] = DEFAULT_VIEW_X
     let [minZ, maxZ] = DEFAULT_VIEW_Z
+    // 簡約版聚焦好球帶，下方保留本壘板與打擊區示意的空間。
+    if (toValue(schematic)) {
+      minX = Math.min(z.left - 25, -48)
+      maxX = Math.max(z.right + 25, 48)
+      minZ = -30
+      maxZ = z.top + 15
+    }
     let expanded = false
 
     if (p) {

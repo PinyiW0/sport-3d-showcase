@@ -111,3 +111,34 @@ describe('contactPointGrid', () => {
     expect(svg.attributes('aria-label')).toContain('擊球點')
   })
 })
+
+describe('簡約呈現', () => {
+  it('切換樣貌保留擊球點與格號，返回原版恢復座標刻度', async () => {
+    const wrapper = render({ x: 10, z: 80 })
+    expect(wrapper.text()).toContain('本壘板')
+    expect(wrapper.find('[data-testid="contact-grid-axes"]').exists()).toBe(true)
+    await wrapper.setProps({ schematic: true })
+    expect(wrapper.find('[data-testid="contact-grid-axes"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="contact-grid-field"]').exists()).toBe(true)
+    expect(wrapper.findAll('[data-testid="contact-grid-cell-numbers"] text')).toHaveLength(9)
+    expect(wrapper.get('[data-testid="contact-point"] title').text()).toContain('x 10.0')
+    const vertices = wrapper.get('[data-testid="contact-grid-home-plate"]').attributes('points')!.split(' ').map(p => p.split(',').map(Number))
+    // 五角形中間的尖端高於其餘四個頂點（SVG y 越小越上方）。
+    expect(vertices[3]![1]).toBeLessThan(Math.min(...vertices.filter((_, i) => i !== 3).map(p => p[1]!)))
+    await wrapper.setProps({ schematic: false })
+    expect(wrapper.find('[data-testid="contact-grid-axes"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="contact-point-label"]').text()).toContain('x 10.0')
+  })
+
+  it('簡約版保留框外座標並能選取其他事件', async () => {
+    const wrapper = render({ x: 100, z: 220 }, { schematic: true, others: [{ id: 4, x: 10, z: 80 }] })
+    const [,, width, height] = wrapper.get('svg').attributes('viewBox')!.split(' ').map(Number)
+    const point = wrapper.get('[data-testid="contact-point"]')
+    expect(Number(point.attributes('cx'))).toBeGreaterThan(0)
+    expect(Number(point.attributes('cx'))).toBeLessThan(width!)
+    expect(Number(point.attributes('cy'))).toBeGreaterThan(0)
+    expect(Number(point.attributes('cy'))).toBeLessThan(height!)
+    await wrapper.get('[data-testid="contact-point-other"]').trigger('click')
+    expect(wrapper.emitted('select')).toEqual([[4]])
+  })
+})

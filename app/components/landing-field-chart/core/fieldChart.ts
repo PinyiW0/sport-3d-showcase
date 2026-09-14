@@ -92,8 +92,8 @@ export const PITCHERS_PLATE: LandingPoint = { x: 0, y: 18.44 }
 // 視野
 // ---------------------------------------------------------------------------
 
-/** 預設視野（公尺），包住整個球場並留邊 */
-export const DEFAULT_VIEW = { xMin: -80, xMax: 80, yMin: -10, yMax: 128 } as const
+/** 預設視野（公尺），包住球場、界外 18 m 草地與畫面留邊 */
+export const DEFAULT_VIEW = { xMin: -94, xMax: 94, yMin: -30, yMax: 142 } as const
 /** 落點在預設視野外時，擴大視野包住該點後再留的邊 */
 export const VIEW_EXPAND_MARGIN_M = 8
 

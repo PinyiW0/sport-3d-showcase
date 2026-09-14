@@ -2,7 +2,7 @@ import type { MaybeRefOrGetter } from 'vue'
 import type { RawBpeIndexEntry, RawBpeOverviewEntry } from '~/components/bpe-data/core/types'
 import { parseBpeResult } from '~/components/bpe-data/core/parseBpeResult'
 
-// 全部事件的精簡結果：擊球點九宮格與球場圖把其他事件疊在同一張圖上時用。
+// 全部事件的精簡結果：擊球點九宮格把其他事件疊在同一張圖上時用（球場圖元件也支援，showcase 目前沒用）。
 //
 // 讀 overview.json（每筆拿掉骨架與動畫，23 筆約 33KB），不必把 3.6MB 的完整檔全抓下來。
 // 每筆照樣過 parseBpeResult 的檢查關卡與缺值規則，跟單筆檢視同一套判斷。

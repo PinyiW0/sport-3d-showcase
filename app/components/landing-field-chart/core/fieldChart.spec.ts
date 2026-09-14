@@ -68,7 +68,7 @@ describe('視野', () => {
     expect(computeFieldViewport({ x: 10, y: 30 }).expanded).toBe(false)
   })
 
-  it('落點在預設視野外（例：本壘後方 y<-10）時擴大視野並留 8 m 邊，不 clamp', () => {
+  it('落點在預設視野外（例：本壘後方 y=-59）時擴大視野並留 8 m 邊，不 clamp', () => {
     const landing = { x: 8.157, y: -59.458 }
     const viewport = computeFieldViewport(landing)
     expect(viewport.expanded).toBe(true)
