@@ -23,7 +23,7 @@ describe('createStrikeZoneScale', () => {
     expect(s.toSvg(0, zone.sz_top).y).toBeLessThan(s.toSvg(0, zone.sz_bot).y)
   })
 
-  it('flips the x-axis (catcher\'s view): larger px maps to a smaller svg x', () => {
+  it('flips the x-axis (pitcher\'s view): larger px maps to a smaller svg x', () => {
     const s = createStrikeZoneScale(zone)
     // Matches the backend renderer: bigger world x sits toward the LEFT.
     expect(s.toSvg(0.5, 2.5).x).toBeLessThan(s.toSvg(-0.5, 2.5).x)
@@ -139,17 +139,26 @@ describe('createFieldLayout', () => {
     expect(f.totalHeight).toBeCloseTo(f.bandTop + f.bandHeight, 6)
   })
 
-  it('produces a 5-point home plate and two 4-point batter boxes', () => {
+  it('produces a 5-point home plate top face, an 8-point side band and two 4-point batter boxes', () => {
     const f = createFieldLayout(scale)
     expect(parse(f.homePlate)).toHaveLength(5)
+    expect(parse(f.homePlateSide)).toHaveLength(8)
     expect(parse(f.leftBox)).toHaveLength(4)
     expect(parse(f.rightBox)).toHaveLength(4)
+  })
+
+  it('lifts the top face above the ground silhouette by the slab thickness', () => {
+    const f = createFieldLayout(scale)
+    // 側面帶的最低點(地面)要比頂面的最低點(平邊)低——立體厚度存在。
+    const topMaxY = Math.max(...parse(f.homePlate).map(([, y]) => y))
+    const sideMaxY = Math.max(...parse(f.homePlateSide).map(([, y]) => y))
+    expect(sideMaxY).toBeGreaterThan(topMaxY)
   })
 
   it('keeps every point inside the svg width and the ground band', () => {
     const f = createFieldLayout(scale)
     const bandBottom = f.bandTop + f.bandHeight
-    for (const poly of [f.homePlate, f.leftBox, f.rightBox]) {
+    for (const poly of [f.homePlate, f.homePlateSide, f.leftBox, f.rightBox]) {
       for (const [x, y] of parse(poly)) {
         expect(x).toBeGreaterThanOrEqual(0)
         expect(x).toBeLessThanOrEqual(scale.viewWidth)
@@ -166,9 +175,36 @@ describe('createFieldLayout', () => {
     // Riser starts at the grid's bottom-left corner... (coords are rounded to 2dp)
     expect(lTop![0]).toBeCloseTo(scale.zoneRect.x, 1)
     expect(lTop![1]).toBeCloseTo(gridBottomY, 1)
-    // ...and ends lower down, on the plate's back edge.
+    // ...and ends lower down, on the plate's flat 17" edge.
     expect(lBottom![1]).toBeGreaterThan(lTop![1])
     expect(parse(f.rightRiser)[0]![0]).toBeCloseTo(scale.zoneRect.x + scale.zoneRect.width, 1)
+  })
+
+  it('points the plate apex up toward the catcher (pitcher\'s view)', () => {
+    const f = createFieldLayout(scale)
+    const pts = parse(f.homePlate)
+    const cx = scale.toSvg(0, 0).x
+    // 尖角＝最高點（svg y 最小），落在中線上;其餘四點都比它低。
+    const apex = pts.reduce((a, b) => (b[1] < a[1] ? b : a))
+    expect(apex[0]).toBeCloseTo(cx, 1)
+    for (const p of pts) {
+      if (p !== apex)
+        expect(p[1]).toBeGreaterThan(apex[1])
+    }
+    // 平邊(17 吋邊)是最低的兩個點,同一水平線。
+    const ys = pts.map(([, y]) => y).sort((a, b) => b - a)
+    expect(ys[0]).toBeCloseTo(ys[1]!, 1)
+  })
+
+  it('keeps a clear lateral gap between the plate and both batter boxes', () => {
+    const f = createFieldLayout(scale)
+    const plateXs = parse(f.homePlate).map(([x]) => x)
+    const rightInnerMin = Math.min(...parse(f.rightBox).map(([x]) => x))
+    const leftInnerMax = Math.max(...parse(f.leftBox).map(([x]) => x))
+    // 打擊區內緣與本壘板最寬處至少隔 6% viewWidth,不能貼著板緣。
+    const minGap = scale.viewWidth * 0.06
+    expect(rightInnerMin - Math.max(...plateXs)).toBeGreaterThanOrEqual(minGap)
+    expect(Math.min(...plateXs) - leftInnerMax).toBeGreaterThanOrEqual(minGap)
   })
 
   it('centers the plate and mirrors the two boxes across the plate center', () => {
