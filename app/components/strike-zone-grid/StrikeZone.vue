@@ -55,7 +55,7 @@ const points = computed(() =>
     :viewBox="`0 0 ${scale.viewWidth} ${viewHeight}`"
     preserveAspectRatio="xMidYMid meet"
     role="img"
-    aria-label="Strike zone"
+    aria-label="好球帶九宮格，投手視角"
     data-testid="strike-zone"
   >
     <!-- Nine-grid cells (hit targets + optional labels) -->
@@ -116,18 +116,43 @@ const points = computed(() =>
       />
     </g>
 
-    <!-- Decorative field context: home plate + batter's boxes -->
+    <!-- Decorative field context（投手視角）：本壘板是這一層的視覺主體，打擊區線條刻意淡化 -->
     <g
       v-if="field"
       data-testid="strike-zone-field"
       fill="none"
-      class="stroke-neutral-400"
-      stroke-width="1.5"
       stroke-linejoin="round"
     >
-      <polyline :points="field.leftBox" data-testid="batter-box-left" />
-      <polyline :points="field.rightBox" data-testid="batter-box-right" />
-      <polygon :points="field.homePlate" data-testid="home-plate" class="stroke-neutral-600" />
+      <polyline
+        :points="field.leftBox"
+        data-testid="batter-box-left"
+        class="stroke-neutral-300 dark:stroke-neutral-700"
+        stroke-width="1"
+      />
+      <polyline
+        :points="field.rightBox"
+        data-testid="batter-box-right"
+        class="stroke-neutral-300 dark:stroke-neutral-700"
+        stroke-width="1"
+      />
+      <polygon
+        :points="field.homePlateSide"
+        class="fill-neutral-400 dark:fill-neutral-600"
+      />
+      <polygon
+        :points="field.homePlate"
+        data-testid="home-plate"
+        class="fill-neutral-200 dark:fill-neutral-400"
+      />
+      <text
+        :x="scale.viewWidth - 4"
+        y="12"
+        text-anchor="end"
+        font-size="10"
+        class="fill-neutral-500 dark:fill-neutral-400"
+      >
+        投手視角
+      </text>
     </g>
 
     <!-- Pitch landing points -->

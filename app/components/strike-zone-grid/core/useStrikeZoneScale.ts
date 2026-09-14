@@ -134,9 +134,10 @@ export function createStrikeZoneScale(
   const scale = viewWidth / worldWidth
   const viewHeight = worldHeight * scale
 
-  // Catcher's perspective, matching the backend renderer: BOTH axes flip.
-  // - x-flip: larger world px maps to a SMALLER svg x (i.e. the LEFT of the
-  //   screen). Skipping this is the classic bug where landing points come out
+  // Pitcher's perspective, matching the backend renderer: BOTH axes flip.
+  // - x-flip: larger world px (+x = first-base side) maps to a SMALLER svg x
+  //   (i.e. the LEFT of the screen) — what the pitcher sees from the mound.
+  //   Skipping this is the classic bug where landing points come out
   //   left-right mirrored versus the backend.
   // - y-flip: world y grows upward, SVG y grows downward.
   const toSvg = (px: number, pz: number): SvgPoint => ({
@@ -181,7 +182,7 @@ export function createStrikeZoneScale(
   for (let row = 0; row < 3; row++) {
     for (let col = 0; col < 3; col++) {
       // `col`/`row` are on-screen indices (0 = left/top, reading order). Since
-      // the x-axis is flipped for the catcher's view, the screen-LEFT edge of a
+      // the x-axis is flipped for the pitcher's view, the screen-LEFT edge of a
       // cell corresponds to the LARGER world x.
       const wLeft = halfWidth - colStep * col
       const wTop = sz_top - rowStep * row
@@ -239,7 +240,7 @@ export interface CellClassification {
  *
  * IMPORTANT — the column convention follows the BACKEND, not the on-screen
  * `scale.cells`: here `col 0` = the smallest px. Because the renderer flips x
- * for the catcher's view, `col 0` is drawn on the RIGHT of the screen. Returns
+ * for the pitcher's view, `col 0` is drawn on the RIGHT of the screen. Returns
  * `{ col: -1, row: -1, inZone: false }` when the pitch is outside the zone.
  */
 export function classifyCell(zone: StrikeZone, px: number, pz: number): CellClassification {
@@ -263,23 +264,27 @@ export function classifyCell(zone: StrikeZone, px: number, pz: number): CellClas
 /**
  * Home plate + batter's boxes + connecting risers, as SVG point strings.
  *
- * This is a *semi-3D schematic*: the ground (home plate + batter's boxes) is
- * drawn on a single-vanishing-point perspective floor, while the strike-zone
- * grid stays a fronto-parallel vertical plane. Two "riser" lines connect the
- * grid's bottom corners down to the plate's back edge, so the zone reads as
- * standing directly above home plate.
+ * This is a *semi-3D schematic* from the PITCHER's perspective: the ground
+ * (home plate + batter's boxes) is drawn on a single-vanishing-point
+ * perspective floor, while the strike-zone grid stays a fronto-parallel
+ * vertical plane. Two "riser" lines connect the grid's bottom corners down to
+ * the plate's flat 17" edge, so the zone reads as standing directly above
+ * home plate.
  *
  * Ground points are addressed as `(lat, depth)`: `lat ∈ [-1, 1]` is the lateral
  * position as a fraction of the floor half-width at that depth; `depth ∈ [0, 1]`
- * goes from the near edge (bottom, closest to the viewer) to the far edge (top,
- * toward the pitcher — where the zone rises).
+ * goes from the near edge (bottom, closest to the viewer on the mound) to the
+ * far edge (top, toward the catcher).
  */
 export interface FieldLayout {
   bandTop: number
   bandHeight: number
   /** Total svg height including zone + gap + band. */
   totalHeight: number
+  /** Top face of the plate slab (5-point pentagon, apex toward the catcher). */
   homePlate: string
+  /** Front thickness band of the slab — the near silhouette extruded down to the ground. */
+  homePlateSide: string
   leftBox: string
   rightBox: string
   /** Left/right lines connecting the grid's bottom corners to the plate. */
@@ -309,6 +314,8 @@ export interface FieldLayoutOptions {
   plateWidthFactor?: number
   /** Plate depth relative to the batter's-box depth span (1 = same span). */
   plateDepthFactor?: number
+  /** Slab thickness as a fraction of viewWidth (the 3D lift of the top face). */
+  plateThicknessFraction?: number
 }
 
 export function createFieldLayout(
@@ -348,39 +355,59 @@ export function createFieldLayout(
   // lat = ±1 side) is intentionally left open, so these are open polylines
   // ordered near-outer → near-inner → far-inner → far-outer (the outer edge,
   // between first and last point, is never connected).
+  // 打擊區內緣拉開到接近真實比例（內緣距板緣 6"，約板半寬的 1.7 倍），
+  // 讓本壘板與打擊區之間留出明顯間距。
   const boxNear = options.boxNear ?? 0.12
   const boxFar = options.boxFar ?? 0.66
-  const boxInnerLat = options.boxInnerLat ?? 0.56
+  const boxInnerLat = options.boxInnerLat ?? 0.72
   const boxOuterLat = options.boxOuterLat ?? 0.96
   const leftBox = poly([g(-boxOuterLat, boxNear), g(-boxInnerLat, boxNear), g(-boxInnerLat, boxFar), g(-boxOuterLat, boxFar)])
   const rightBox = poly([g(boxOuterLat, boxNear), g(boxInnerLat, boxNear), g(boxInnerLat, boxFar), g(boxOuterLat, boxFar)])
 
-  // Home plate on the floor: point toward the viewer (near/bottom), flat 17"
-  // edge toward the pitcher (far/top). Its depth range is centered on the
-  // batter's boxes so the plate sits vertically centered between them.
+  // Home plate, pitcher's view: flat 17" edge faces the viewer (near/bottom),
+  // point toward the catcher (far/top — 尖角朝上). Its depth range is centered
+  // on the batter's boxes so the plate sits vertically centered between them.
+  // 立體感：頂面＝地面輪廓整體上移 lift 的五邊形；前側厚度帶＝近端輪廓
+  // （mid→flat→flat→mid）與其地面投影圍成的一圈。
   const boxCenterT = (boxNear + boxFar) / 2
   const plateHalfT = ((boxFar - boxNear) / 2) * (options.plateDepthFactor ?? 0.9)
-  const tPoint = boxCenterT - plateHalfT
+  const tFlat = boxCenterT - plateHalfT
   const tMid = boxCenterT
-  const tFlat = boxCenterT + plateHalfT
+  const tPoint = boxCenterT + plateHalfT
   const plateFlatLat = ((options.plateWidthFactor ?? 0.9) * zoneHalfFrac) / halfAt(tFlat)
-  const backLeft = g(-plateFlatLat, tFlat)
-  const backRight = g(plateFlatLat, tFlat)
+  const lift = viewWidth * (options.plateThicknessFraction ?? 0.013)
+  const up = ([x, y]: [number, number]): [number, number] => [x, y - lift]
+  const gFlatL = g(-plateFlatLat, tFlat)
+  const gFlatR = g(plateFlatLat, tFlat)
+  const gMidL = g(-plateFlatLat, tMid)
+  const gMidR = g(plateFlatLat, tMid)
+  const topFlatL = up(gFlatL)
+  const topFlatR = up(gFlatR)
   const homePlate = poly([
-    backLeft,
-    backRight,
-    g(plateFlatLat, tMid),
-    g(0, tPoint),
-    g(-plateFlatLat, tMid),
+    topFlatL,
+    topFlatR,
+    up(gMidR),
+    up(g(0, tPoint)),
+    up(gMidL),
+  ])
+  const homePlateSide = poly([
+    up(gMidL),
+    topFlatL,
+    topFlatR,
+    up(gMidR),
+    gMidR,
+    gFlatR,
+    gFlatL,
+    gMidL,
   ])
 
-  // Risers: connect the grid's bottom corners down to the plate's back edge.
+  // Risers: connect the grid's bottom corners down to the plate's flat top edge.
   const gridLeftX = scale.zoneRect.x
   const gridRightX = scale.zoneRect.x + scale.zoneRect.width
-  const leftRiser = poly([[gridLeftX, gridBottom], backLeft])
-  const rightRiser = poly([[gridRightX, gridBottom], backRight])
+  const leftRiser = poly([[gridLeftX, gridBottom], topFlatL])
+  const rightRiser = poly([[gridRightX, gridBottom], topFlatR])
 
-  return { bandTop, bandHeight, totalHeight, homePlate, leftBox, rightBox, leftRiser, rightRiser }
+  return { bandTop, bandHeight, totalHeight, homePlate, homePlateSide, leftBox, rightBox, leftRiser, rightRiser }
 }
 
 /** Reactive wrapper for use inside components. */
