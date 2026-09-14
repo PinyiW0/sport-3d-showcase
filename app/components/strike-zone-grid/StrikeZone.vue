@@ -55,7 +55,7 @@ const points = computed(() =>
     :viewBox="`0 0 ${scale.viewWidth} ${viewHeight}`"
     preserveAspectRatio="xMidYMid meet"
     role="img"
-    aria-label="Strike zone"
+    aria-label="好球帶九宮格，投手視角"
     data-testid="strike-zone"
   >
     <!-- Nine-grid cells (hit targets + optional labels) -->
