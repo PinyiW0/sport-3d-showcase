@@ -241,6 +241,8 @@ const labelLayout = computed(() => {
 
 const noLandingSvg = computed(() => ({ x: scale.value.viewWidth / 2, y: scale.value.viewHeight * 0.15 }))
 
+// svg 用 role="group" 而不是 role="img"：img 會把整棵子樹當成一張圖，
+// 裡面可點選的灰點（role="button"）報讀軟體就讀不到
 const ariaLabel = computed(() => {
   const base = props.landing
     ? `球場圖，預測落點約在 (${formatFieldNumber(props.landing.x)}, ${formatFieldNumber(props.landing.y)}) 公尺`
@@ -255,7 +257,7 @@ const ariaLabel = computed(() => {
     class="h-auto w-full select-none"
     :viewBox="`0 0 ${scale.viewWidth} ${scale.viewHeight}`"
     preserveAspectRatio="xMidYMid meet"
-    role="img"
+    role="group"
     :aria-label="ariaLabel"
     data-testid="landing-field-chart"
   >

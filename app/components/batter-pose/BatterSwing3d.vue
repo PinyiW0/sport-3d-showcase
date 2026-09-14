@@ -81,10 +81,12 @@ const legend = computed(() => {
   ]
 })
 /**
- * 球的圖例要跟畫面一致：用棒球模型時畫成白球（淡灰外框，淺底上才看得到），沒用模型時是規範的紅球。
+ * 球的圖例要跟畫面一致：棒球模型真的換上去才畫成白球（淡灰外框，淺底上才看得到），
+ * 沒用模型、模型還沒到手或載入失敗時，畫面上是規範的紅球，圖例也畫紅球。
  * 以前白底紅圈會讓人以為畫面上有紅色的東西。
  */
-const ballSwatchStyle = computed(() => (props.ballModelUrl
+const ballModelLoaded = ref(false)
+const ballSwatchStyle = computed(() => (ballModelLoaded.value
   ? { backgroundColor: '#ffffff', borderColor: props.dark ? 'rgba(255, 255, 255, 0.35)' : 'rgba(15, 23, 42, 0.3)' }
   : { backgroundColor: toCssColor(BALL_FALLBACK_COLOR), borderColor: 'transparent' }))
 
@@ -98,6 +100,10 @@ function teardown() {
   disposed = true
   scene?.dispose()
   scene = null
+}
+
+function markBallModelLoaded() {
+  ballModelLoaded.value = true
 }
 
 /** 直接呼叫而不是 watch view：點目前這個選項也要重新取景（使用者轉歪了想回來） */
@@ -114,7 +120,11 @@ onMounted(async () => {
   // 這裡再建場景就會留下一個沒人回收的 WebGL context
   if (disposed || !hostRef.value)
     return
-  scene = new SwingScene(hostRef.value, props.swing, { dark: props.dark, ballModelUrl: props.ballModelUrl })
+  scene = new SwingScene(hostRef.value, props.swing, {
+    dark: props.dark,
+    ballModelUrl: props.ballModelUrl,
+    onBallModelLoaded: markBallModelLoaded,
+  })
   if (view.value !== 'overview')
     scene.setView(view.value)
   scene.setFrame(props.frame)

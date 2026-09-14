@@ -11,11 +11,18 @@ const INDEX_URL = '/samples/bpe/index.json'
 
 /**
  * @param initial 預設選第幾筆（index.json 的陣列索引，與參考實作網址的 hash 同一套編號）
+ * @param options 載入選項
+ * @param options.enabled 預設 true；false 時什麼都不抓（預覽頁共用一個頁面，非 BPE 模組不必下載樣本）
  */
-export function useBpeEvents(initial = 0) {
+export function useBpeEvents(initial = 0, options: { enabled?: boolean } = {}) {
   const asset = useAssetUrl()
+  const enabled = options.enabled ?? true
 
-  const { data: index, error: indexError } = useFetch<RawBpeIndexEntry[]>(asset(INDEX_URL), { server: false })
+  // 事件清單抓不到時 entry 恆為 null，下面的單筆事件也就不會觸發
+  const { data: index, error: indexError } = useFetch<RawBpeIndexEntry[]>(asset(INDEX_URL), {
+    server: false,
+    immediate: enabled,
+  })
   const entries = computed(() => (Array.isArray(index.value) ? index.value : []))
 
   const selected = ref(initial)

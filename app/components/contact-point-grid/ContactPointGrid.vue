@@ -228,6 +228,8 @@ const labelOnLeft = computed(() => {
 /** 沒有擊球點時的提示放在好球帶上方的空白處，不壓在框線上 */
 const emptySvg = computed(() => toSvg(0, (scale.value.maxZ + props.zone.top) / 2))
 
+// svg 用 role="group" 而不是 role="img"：img 會把整棵子樹當成一張圖，
+// 裡面可點選的灰點（role="button"）報讀軟體就讀不到
 const ariaLabel = computed(() => {
   const base = props.point
     ? `擊球點九宮格，擊球點 x ${formatNum(props.point.x)}、z ${formatNum(props.point.z)} 公分`
@@ -242,7 +244,7 @@ const ariaLabel = computed(() => {
     class="h-auto w-full select-none"
     :viewBox="`0 0 ${viewBoxWidth} ${viewBoxHeight}`"
     preserveAspectRatio="xMidYMid meet"
-    role="img"
+    role="group"
     :aria-label="ariaLabel"
     data-testid="contact-point-grid"
   >

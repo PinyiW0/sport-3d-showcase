@@ -121,8 +121,10 @@ let metricDelay: ReturnType<typeof setTimeout> | undefined
 // 球場圖另外排除會讓視野擴大的事件 #11（本壘後方 59 m）——4 秒的循環預覽裡突然縮放很跳，
 // 那個行為留給模組頁看。清單依落點分散程度挑，涵蓋左、中、右與遠近。
 const BPE_LANDING_CYCLE = [5, 4, 14, 8, 19, 7, 18, 10]
+const needsBpe = computed(() => ['batter-pose-skeleton', 'contact-point-grid', 'landing-field-chart'].includes(slug.value))
 const { entries: bpeEntries, selected: bpeSelected, outcome: bpeOutcome } = useBpeEvents(
   slug.value === 'landing-field-chart' ? BPE_LANDING_CYCLE[0] : 0,
+  { enabled: needsBpe.value },
 )
 const bpeCycle = computed(() => {
   if (slug.value === 'landing-field-chart')

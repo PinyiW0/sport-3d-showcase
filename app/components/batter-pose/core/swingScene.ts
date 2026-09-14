@@ -60,7 +60,7 @@ import { HOME_PLATE_POINTS } from '../../baseball-field/core/fieldGeometry'
 import { applyUnitSphereNormalization, computeUnitSphereNormalization } from '../../baseball-spin/core/normalize-model'
 import { isBatJoint } from '../../bpe-data/core/parseBpeResult'
 import { createHoverLabel } from '../../scene3d/core/hoverLabel'
-import { Viewport } from '../../scene3d/core/viewport'
+import { disposeObject3D, Viewport } from '../../scene3d/core/viewport'
 import { BALL_TRAIL_LENGTH, BALL_TRAIL_RADIUS_CM, sampleBallTrail } from './ballTrail'
 import { boneRole, jointRole } from './skeletonStyle'
 import { collectFramingPoints, SWING_VIEW_EYE } from './swingFraming'
@@ -74,6 +74,8 @@ export interface SwingSceneOptions {
    * 不給、或載入失敗時畫規範預設的紅球（規範：球用與球棒不同的紅色）。
    */
   ballModelUrl?: string
+  /** 棒球模型真的換上去之後呼叫一次；載入失敗或已卸載就不呼叫。圖例靠它決定畫白球還是紅球 */
+  onBallModelLoaded?: () => void
 }
 
 /**
@@ -252,7 +254,7 @@ export class SwingScene {
       return holder
     })
     if (opts.ballModelUrl)
-      void this.loadBallModel(opts.ballModelUrl)
+      void this.loadBallModel(opts.ballModelUrl, opts.onBallModelLoaded)
 
     this.homePlate = this.buildHomePlate()
     this.viewport.scene.add(this.homePlate)
@@ -765,7 +767,7 @@ export class SwingScene {
    * 兩個模組的球大小算法一致），每顆各自複製材質才能各自設透明度；幾何共用不複製。
    * 載入失敗就維持紅球——那正是規範的預設畫法，畫面不會壞。
    */
-  private async loadBallModel(url: string): Promise<void> {
+  private async loadBallModel(url: string, onLoaded?: () => void): Promise<void> {
     let model: Object3D
     try {
       model = (await new GLTFLoader().loadAsync(url)).scene
@@ -773,9 +775,12 @@ export class SwingScene {
     catch {
       return
     }
-    // await 期間可能已經卸載，這時 viewport 已釋放，不能再往場景加東西
-    if (this.disposed)
+    // await 期間可能已經卸載，這時 viewport 已釋放，不能再往場景加東西；
+    // 載入好的模型還沒掛進場景，viewport 的釋放清不到，要自己釋放幾何、材質與貼圖
+    if (this.disposed) {
+      disposeObject3D(model)
       return
+    }
 
     const normalized = new Group()
     applyUnitSphereNormalization(normalized, computeUnitSphereNormalization(model))
@@ -807,6 +812,7 @@ export class SwingScene {
     })
     fallbackGeometry.dispose()
     this.applyTrail(this.currentFrame)
+    onLoaded?.()
   }
 }
 

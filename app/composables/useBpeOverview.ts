@@ -11,19 +11,21 @@ import { parseBpeResult } from '~/components/bpe-data/core/parseBpeResult'
 const OVERVIEW_URL = '/samples/bpe/overview.json'
 
 /**
- * @param entries index.json 的事件清單。兩份檔案由同一支腳本依同一順序寫出，
- * 仍逐筆比對 event_id，對不上的那筆不回傳，免得把 A 事件的點標成 B 事件
+ * @param entries index.json 的事件清單。兩份檔案雖由同一支腳本依同一順序寫出，
+ * 仍用 event_id 查回在清單裡的位置，不靠陣列順序：順序對不上時照樣找得到，
+ * 清單裡沒有的那筆不回傳，免得把 A 事件的點標成 B 事件
  */
 export function useBpeOverview(entries: MaybeRefOrGetter<readonly RawBpeIndexEntry[]>) {
   const asset = useAssetUrl()
   const { data } = useFetch<RawBpeOverviewEntry[]>(asset(OVERVIEW_URL), { server: false })
 
   return computed(() => {
-    const list = toValue(entries)
     if (!Array.isArray(data.value))
       return []
-    return data.value.flatMap((item, index) =>
-      list[index]?.event_id === item.event_id ? [{ index, outcome: parseBpeResult(item.result) }] : [],
-    )
+    const indexById = new Map(toValue(entries).map((entry, index) => [entry.event_id, index]))
+    return data.value.flatMap((item) => {
+      const index = indexById.get(item.event_id)
+      return index === undefined ? [] : [{ index, outcome: parseBpeResult(item.result) }]
+    })
   })
 }
