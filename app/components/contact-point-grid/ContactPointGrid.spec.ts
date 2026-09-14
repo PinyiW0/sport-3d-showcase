@@ -104,10 +104,10 @@ describe('contactPointGrid', () => {
     expect(numbers).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9'])
   })
 
-  it('svg 帶有 role=img 與 aria-label', () => {
+  it('svg 是 role=group（不是 img，灰點按鈕才讀得到）且帶 aria-label', () => {
     const wrapper = render({ x: 0, z: 70 })
     const svg = wrapper.get('svg')
-    expect(svg.attributes('role')).toBe('img')
+    expect(svg.attributes('role')).toBe('group')
     expect(svg.attributes('aria-label')).toContain('擊球點')
   })
 })

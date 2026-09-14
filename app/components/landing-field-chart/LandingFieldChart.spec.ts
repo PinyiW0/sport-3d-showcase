@@ -93,10 +93,10 @@ describe('landingFieldChart', () => {
     expect(wrapper.text()).not.toContain('+x')
   })
 
-  it('svg 根節點有 role 與 data-testid', () => {
+  it('svg 根節點是 role=group（不是 img，灰點按鈕才讀得到）且有 data-testid', () => {
     const wrapper = mount(LandingFieldChart, { props: { landing: null } })
     const svg = wrapper.get('svg')
-    expect(svg.attributes('role')).toBe('img')
+    expect(svg.attributes('role')).toBe('group')
     expect(svg.attributes('data-testid')).toBe('landing-field-chart')
   })
 })
