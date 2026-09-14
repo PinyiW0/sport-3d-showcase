@@ -24,7 +24,7 @@
 
 樣本（`public/samples/bpe/`，`scripts/import-bpe-samples.mjs` 產生）除了 `index.json` 與逐筆 `events/`，
 還有一份 `overview.json`：同一批結果只拿掉 payload 的 `skeleton` 與 `animation`（23 筆約 33KB），
-擊球點九宮格與球場圖把全部事件疊在同一張圖上時讀它（`app/composables/useBpeOverview.ts`），每筆照樣過 `parseBpeResult()`。
+擊球點九宮格把全部事件疊在同一張圖上時讀它（`app/composables/useBpeOverview.ts`），每筆照樣過 `parseBpeResult()`；球場圖元件也支援疊圖，但 showcase 目前沒有用。
 
 兩支 `.spec.ts` 都有合成資料的邊界案例；`parseBpeResult.spec.ts` 另用 `public/samples/bpe/` 的 23 筆真實樣本
 核對交接報告的逐筆數字（四類分布 14／1／2／6、事件 #20 無擊球點有落點、球體幀數等），樣本不在時自動跳過。

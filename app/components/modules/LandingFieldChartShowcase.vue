@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import type { BpeMetricKey } from '~/components/bpe-data/core/types'
-import type { FieldMarker } from '~/components/landing-field-chart/core/fieldChart'
 import { eventLabel, formatExitDirectionBrief, formatMetricBrief, formatNumber, outcomeLabel } from '~/components/bpe-data/core/format'
 import { FLIGHT_METRIC_KEYS } from '~/components/bpe-data/core/types'
-import { computeFieldViewport, isInViewport } from '~/components/landing-field-chart/core/fieldChart'
+import { computeFieldViewport } from '~/components/landing-field-chart/core/fieldChart'
 import LandingFieldChart from '~/components/landing-field-chart/LandingFieldChart.vue'
 import BpeMetricList from '~/components/modules/BpeMetricList.vue'
 
@@ -58,23 +57,11 @@ const pointTitle = computed(() => {
 })
 
 // 視野是否擴大由 core 的 computeFieldViewport 判斷，跟元件內部用的是同一份規則，
-// 這裡只是外面想知道要不要多講一句解釋、有幾個灰點落在視野外，不重算落點怎麼畫
+// 這裡只用來顯示視野擴大的提示，不重算落點怎麼畫
 const viewport = computed(() => computeFieldViewport(landing.value))
 
-// 其他事件的落點疊在同一張圖上：一樣過檢查關卡、沒有落點的不畫
-const overview = useBpeOverview(entries)
-const others = computed<FieldMarker[]>(() => overview.value.flatMap(({ index, outcome: item }) => {
-  if (index === selected.value || !item.ok || !item.result.landingM)
-    return []
-  const [x, y] = item.result.landingM
-  const distance = item.result.metrics.find(m => m.key === 'distance')
-  const detail = distance ? formatMetricBrief(distance.value, distance.unit) : `(${formatMetricBrief(x, '')}, ${formatMetricBrief(y, '')}) m`
-  return [{ id: index, x, y, label: `事件 #${index} · ${detail}` }]
-}))
-const othersOutOfView = computed(() => others.value.filter(marker => !isInViewport(viewport.value, marker)).length)
-
-/** 飛行數值的主次：距離、初速、仰角放大，方向與滯空時間縮成一行一項 */
-const PRIMARY_FLIGHT_KEYS: readonly BpeMetricKey[] = ['distance', 'exit_velocity', 'launch_angle']
+/** 距離作為主要數值，其餘飛行數據用對齊的列呈現，避免窄欄卡片擠字。 */
+const PRIMARY_FLIGHT_KEYS: readonly BpeMetricKey[] = ['distance']
 
 const outcomeText = computed(() => outcomeLabel(result.value?.outcome ?? null))
 /** 判定結果標籤前的色點：擊中用綠色，判定不確定用琥珀色，其他值中性灰 */
@@ -100,8 +87,8 @@ const panelClass = computed(() => (lightCanvas.value
       :description="String(error)"
     />
 
-    <div class="flex flex-wrap items-center gap-3">
-      <div class="flex items-center gap-1">
+    <div class="flex flex-wrap items-end justify-between gap-4">
+      <div class="flex w-full min-w-0 items-center gap-2 sm:w-auto">
         <UButton
           size="sm"
           square
@@ -117,7 +104,7 @@ const panelClass = computed(() => (lightCanvas.value
           v-model="selected"
           :items="eventOptions"
           size="sm"
-          class="w-60 sm:w-72"
+          class="min-w-0 flex-1 sm:w-64 sm:flex-none"
           aria-label="選擇事件"
         />
         <UButton
@@ -132,8 +119,10 @@ const panelClass = computed(() => (lightCanvas.value
           @click="next"
         />
       </div>
-      <USwitch v-model="showDecorations" label="距離弧與內野" />
-      <USwitch v-model="lightCanvas" label="淺色畫布" />
+      <div class="flex flex-wrap items-center gap-4 border-neutral-200 sm:border-l sm:pl-4 dark:border-neutral-700">
+        <USwitch v-model="showDecorations" size="sm" label="距離弧與內野" />
+        <USwitch v-model="lightCanvas" size="sm" label="淺色畫布" />
+      </div>
     </div>
 
     <UAlert
@@ -143,17 +132,25 @@ const panelClass = computed(() => (lightCanvas.value
       :description="`status = ${outcome.status ?? '（缺少）'} · error：${outcome.errorText ?? '（未提供）'}`"
     />
 
-    <div v-else-if="result" class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+    <div v-else-if="result" class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]">
       <!-- 畫布：上排判定結果與視野提示、中間球場圖、下排圖例。標籤排在圖的上下而不是疊在圖上，手機上才不會蓋住方位字 -->
       <div
-        class="flex min-w-0 flex-col gap-3 border border-neutral-200 p-3 dark:border-neutral-800"
-        :class="lightCanvas ? 'bg-neutral-100' : 'bg-neutral-900'"
+        class="flex min-w-0 flex-col gap-3 rounded-xl border border-neutral-200 p-2 sm:p-5 dark:border-neutral-800"
+        :class="lightCanvas ? 'bg-neutral-100' : 'bg-neutral-950'"
         data-testid="landing-field-canvas"
       >
-        <div class="flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div class="flex flex-wrap items-center justify-between gap-2 px-2 pt-2 text-xs sm:px-0 sm:pt-0">
+          <div>
+            <h3 class="text-sm font-semibold" :class="lightCanvas ? 'text-neutral-800' : 'text-neutral-100'">
+              落點位置
+            </h3>
+            <p class="mt-1" :class="lightCanvas ? 'text-neutral-600' : 'text-neutral-400'">
+              俯視球場 · 單位 m
+            </p>
+          </div>
           <span
             v-if="outcomeText"
-            class="flex items-center gap-1.5 border px-2 py-0.5 font-medium"
+            class="flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-medium"
             :class="panelClass"
             :title="`outcome = ${result.outcome}`"
           >
@@ -166,34 +163,28 @@ const panelClass = computed(() => (lightCanvas.value
           >落點在預設視野外，已擴大視野照座標顯示</span>
         </div>
 
-        <div class="mx-auto w-full max-w-lg">
+        <div class="mx-auto w-full max-w-xl">
           <LandingFieldChart
             :landing="landing"
             :label="landingLabel"
             :show-decorations="showDecorations"
             :dark="!lightCanvas"
-            :others="others"
             :point-title="pointTitle"
-            @select="selected = $event"
           />
         </div>
 
         <div
-          class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs"
+          class="flex flex-wrap items-center gap-x-4 gap-y-1 px-2 pb-2 text-xs sm:px-0 sm:pb-0"
           :class="lightCanvas ? 'text-neutral-600' : 'text-neutral-400'"
           data-testid="landing-field-legend"
         >
           <span v-if="landing" class="flex items-center gap-1.5">
             <span class="size-2.5 rounded-full" :class="lightCanvas ? 'bg-red-600' : 'bg-red-500'" />本次預測落點
           </span>
-          <span v-if="others.length" class="flex items-center gap-1.5">
-            <span class="size-2 rounded-full" :class="lightCanvas ? 'bg-neutral-500/45' : 'bg-neutral-400/45'" />其他 {{ others.length }} 筆（點一下切換）
-          </span>
-          <span v-if="othersOutOfView">{{ othersOutOfView }} 筆在目前視野外，沒有畫出</span>
         </div>
       </div>
 
-      <div class="space-y-5">
+      <div class="space-y-5 rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
         <BpeMetricList
           :metrics="result.metrics"
           :keys="FLIGHT_METRIC_KEYS"
@@ -204,7 +195,6 @@ const panelClass = computed(() => (lightCanvas.value
         <!-- 操作說明：手機沒有實體鍵盤，只在寬螢幕顯示 -->
         <p class="hidden flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500 sm:flex dark:text-neutral-400">
           <span class="flex items-center gap-1"><UKbd value="←" /><UKbd value="→" />上一筆／下一筆</span>
-          <span>點圖上的灰點切換到該事件</span>
         </p>
       </div>
     </div>
@@ -222,12 +212,11 @@ const panelClass = computed(() => (lightCanvas.value
       <template #content>
         <ul class="list-disc space-y-1 pb-1 pl-5 pt-1 text-xs text-neutral-500 dark:text-neutral-400">
           <li>
-            球場邊界（界外線、外野弧）是規範給的固定公式，一律照畫；距離弧、內野菱形、投手板點只是方便閱讀的裝飾，
+            球場邊界（界外線、外野弧）是規範給的固定公式，一律照畫；距離弧、紅土內野、壘包、打擊區與投手丘是方便閱讀的示意裝飾，
             關掉「距離弧與內野」不影響落點位置。
           </li>
           <li>
             落點在界外或本壘後方（例如事件 #11）一樣照座標畫，不判斷界內外、也不 clamp 到畫面邊緣。
-            其他事件的灰點不會讓視野擴大，落在視野外的不畫，圖例會註明有幾筆。
           </li>
           <li>
             23 筆裡有 6 筆沒有預測落點，依規範不畫點；沒有擊球點不代表沒有落點——事件 #3、#13、#20

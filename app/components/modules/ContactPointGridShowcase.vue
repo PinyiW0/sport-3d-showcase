@@ -41,6 +41,7 @@ const levelOptions = BATTER_LEVEL_ORDER.map(key => ({
 }))
 
 const showGuides = ref(true)
+const schematic = ref(false)
 
 // 畫布配色：預設跟著頁面，可以切成淺色畫布（規則見 useLightCanvas）
 const lightCanvas = useLightCanvas()
@@ -61,7 +62,7 @@ const pointTitle = computed(() => {
 
 // 與 <ContactPointGrid> 內部同一份純函式，這裡另外算一次是為了拿 expanded 旗標與視野邊界
 // 顯示在畫布標籤——元件本身不外露內部 scale，這是刻意的（見元件 README）。
-const scale = useContactGridScale(zone, contactPoint)
+const scale = useContactGridScale(zone, contactPoint, schematic)
 
 // 落在好球帶第幾格（格號與圖上淡淡標的 1～9 同一套）；框外不 clamp 出格號，只講「好球帶外」
 const cellText = computed(() => {
@@ -147,7 +148,8 @@ const panelClass = computed(() => (lightCanvas.value
         class="w-40"
         aria-label="打者級別"
       />
-      <USwitch v-model="showGuides" label="輔助線" />
+      <USwitch v-model="schematic" label="簡約呈現" />
+      <USwitch v-model="showGuides" label="輔助線" :disabled="schematic" />
       <USwitch v-model="lightCanvas" label="淺色畫布" />
     </div>
 
@@ -176,6 +178,7 @@ const panelClass = computed(() => (lightCanvas.value
             <span class="size-2 rounded-full" :class="outcomeDotClass" />{{ outcomeText }}
           </span>
           <span class="flex flex-wrap items-center gap-2">
+            <span class="border px-2 py-0.5 font-medium" :class="panelClass">捕手視角</span>
             <span v-if="cellText" class="border px-2 py-0.5 font-medium tabular-nums" :class="panelClass">{{ cellText }}</span>
             <span v-if="scale.expanded" class="border px-2 py-0.5" :class="[panelClass, lightCanvas ? 'text-amber-700' : 'text-amber-400']">超出預設視野，已自動擴大</span>
           </span>
@@ -184,6 +187,7 @@ const panelClass = computed(() => (lightCanvas.value
         <div class="mx-auto w-full max-w-sm">
           <ContactPointGrid
             :zone="zone"
+            :schematic="schematic"
             :point="contactPoint"
             :show-guides="showGuides"
             :dark="!lightCanvas"
@@ -254,7 +258,7 @@ const panelClass = computed(() => (lightCanvas.value
             切級別只會讓框變高或變矮。格號由上而下、由三壘側到一壘側排 1～9。
           </li>
           <li>
-            視野固定 150 × 200 cm，所有事件的擊球點畫在同一張圖上直接比位置。選中的那筆落在視野外時照座標畫、
+            原版視野固定 150 × 200 cm，簡約版聚焦好球帶並顯示本壘板與打擊區示意；所有事件的擊球點畫在同一張圖上直接比位置。選中的那筆落在視野外時照座標畫、
             自動擴大視野，不裁切也不強行縮進框內；灰點不會讓視野擴大。
           </li>
           <li>contact 為 null 時不畫擊球點（23 筆樣本裡有 9 筆是這樣：8 筆 outcome 為 uncertain，另有事件 #20 雖是 hit 也沒有擊球點）。</li>

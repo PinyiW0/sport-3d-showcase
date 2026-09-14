@@ -19,6 +19,8 @@ const props = withDefaults(
     point: ContactPoint | null
     /** 擊球點半徑（cm）。預設用真實球半徑，SVG 單位即 cm，畫出來就是真實大小 */
     pointRadius?: number
+    /** 簡約九宮格與捕手視角場地示意 */
+    schematic?: boolean
     /** 擊球點到兩軸的虛線輔助線 */
     showGuides?: boolean
     /** 深色配色（淺色底上用 false）。不跟頁面 colorMode 走，底色由呼叫端鋪 */
@@ -33,6 +35,7 @@ const props = withDefaults(
   }>(),
   {
     pointRadius: BALL_RADIUS,
+    schematic: false,
     showGuides: true,
     dark: false,
     others: () => [],
@@ -83,6 +86,7 @@ const tone = computed(() => TONES[props.dark ? 'dark' : 'light'])
 const scale = useContactGridScale(
   () => props.zone,
   () => props.point,
+  () => props.schematic,
 )
 
 // 字級與點的大小要保證「畫面上至少幾像素」：SVG 單位跟著 viewBox 一起縮，
@@ -129,12 +133,14 @@ const fontSize = computed(() => {
   return Math.max(design, (MIN_TEXT_PX * (scale.value.viewWidth + PAD_RIGHT)) / room)
 })
 
-const pad = computed(() => ({
-  left: fontSize.value * PAD_EM.left,
-  right: PAD_RIGHT,
-  top: fontSize.value * PAD_EM.top,
-  bottom: fontSize.value * PAD_EM.bottom,
-}))
+const pad = computed(() => props.schematic
+  ? { left: 6, right: 6, top: 6, bottom: 6 }
+  : ({
+      left: fontSize.value * PAD_EM.left,
+      right: PAD_RIGHT,
+      top: fontSize.value * PAD_EM.top,
+      bottom: fontSize.value * PAD_EM.bottom,
+    }))
 
 const viewBoxWidth = computed(() => scale.value.viewWidth + pad.value.left + pad.value.right)
 const viewBoxHeight = computed(() => scale.value.viewHeight + pad.value.top + pad.value.bottom)
@@ -145,7 +151,7 @@ function pxToUnits(px: number): number {
 }
 
 const labelFontSize = computed(() => Math.max(fontSize.value * 1.1, pxToUnits(MIN_LABEL_PX)))
-const cellNumberFontSize = computed(() => Math.max(fontSize.value * 0.72, pxToUnits(MIN_TEXT_PX - 1)))
+const cellNumberFontSize = computed(() => Math.max(fontSize.value * (props.schematic ? 1.1 : 0.72), pxToUnits(MIN_TEXT_PX - 1)))
 /** 文字描邊寬度：字級的四分之一，壓在線上仍讀得清楚、又不會糊成一塊 */
 const haloWidth = computed(() => fontSize.value * 0.25)
 
@@ -248,87 +254,115 @@ const ariaLabel = computed(() => {
     :aria-label="ariaLabel"
     data-testid="contact-point-grid"
   >
-    <!-- 地面線 z=0 -->
-    <line
-      :x1="toSvg(scale.minX, 0).x"
-      :y1="groundY"
-      :x2="toSvg(scale.maxX, 0).x"
-      :y2="groundY"
-      :class="tone.ground"
-      stroke-width="0.8"
-    />
-
-    <!-- 本壘板正視：貼地窄帶 -->
-    <rect
-      :x="plateBand.x"
-      :y="plateBand.y"
-      :width="plateBand.width"
-      :height="plateBand.height"
-      :class="tone.plate"
-      stroke-width="0.5"
-    />
-
-    <!-- z 軸刻度（左側，每 50cm，含數字與 cm 單位） -->
-    <g :class="tone.line">
+    <g v-if="!schematic" data-testid="contact-grid-axes">
+      <!-- 地面線 z=0 -->
       <line
-        v-for="tick in zTicks"
-        :key="`z-tick-${tick}`"
-        :x1="toSvg(scale.minX, tick).x - 2"
-        :y1="toSvg(scale.minX, tick).y"
-        :x2="toSvg(scale.minX, tick).x"
-        :y2="toSvg(scale.minX, tick).y"
+        :x1="toSvg(scale.minX, 0).x"
+        :y1="groundY"
+        :x2="toSvg(scale.maxX, 0).x"
+        :y2="groundY"
+        :class="tone.ground"
+        stroke-width="0.8"
+      />
+
+      <!-- 本壘板正視：貼地窄帶 -->
+      <rect
+        :x="plateBand.x"
+        :y="plateBand.y"
+        :width="plateBand.width"
+        :height="plateBand.height"
+        :class="tone.plate"
         stroke-width="0.5"
       />
-    </g>
-    <g :class="tone.text" :font-size="fontSize">
+
+      <!-- z 軸刻度（左側，每 50cm，含數字與 cm 單位） -->
+      <g :class="tone.line">
+        <line
+          v-for="tick in zTicks"
+          :key="`z-tick-${tick}`"
+          :x1="toSvg(scale.minX, tick).x - 2"
+          :y1="toSvg(scale.minX, tick).y"
+          :x2="toSvg(scale.minX, tick).x"
+          :y2="toSvg(scale.minX, tick).y"
+          stroke-width="0.5"
+        />
+      </g>
+      <g :class="tone.text" :font-size="fontSize">
+        <text
+          v-for="tick in zTicks"
+          :key="`z-label-${tick}`"
+          :x="toSvg(scale.minX, tick).x - 3"
+          :y="toSvg(scale.minX, tick).y + fontSize * 0.32"
+          text-anchor="end"
+        >{{ String(tick).replace('-', '−') }}</text>
+        <!-- 單位字放在最上面那個刻度數字的正上方，隔一行，不跟數字疊在一起 -->
+        <text
+          :x="toSvg(scale.minX, scale.maxZ).x - 3"
+          :y="Math.max(toSvg(scale.minX, scale.maxZ).y - fontSize * 0.9, fontSize * 0.85)"
+          text-anchor="end"
+        >cm</text>
+      </g>
+
+      <!-- x 軸刻度（下方，每 25cm） -->
+      <g :class="tone.line">
+        <line
+          v-for="tick in xTicks"
+          :key="`x-tick-${tick}`"
+          :x1="toSvg(tick, scale.minZ).x"
+          :y1="toSvg(tick, scale.minZ).y"
+          :x2="toSvg(tick, scale.minZ).x"
+          :y2="toSvg(tick, scale.minZ).y + 2"
+          stroke-width="0.5"
+        />
+      </g>
+      <g :class="tone.text" :font-size="fontSize" text-anchor="middle">
+        <text
+          v-for="tick in xTicks"
+          :key="`x-label-${tick}`"
+          :x="toSvg(tick, scale.minZ).x"
+          :y="toSvg(tick, scale.minZ).y + fontSize * 1.3"
+        >{{ String(tick).replace('-', '−') }}</text>
+      </g>
+
+      <!-- 方位字：捕手視角，−x 三壘側在左、+x 一壘側在右（不依打者慣用手翻轉） -->
+      <g :class="tone.text" :font-size="fontSize">
+        <text :x="toSvg(scale.minX, scale.minZ).x" :y="viewBoxHeight - fontSize * 0.4" text-anchor="start">
+          三壘側
+        </text>
+        <text :x="toSvg(scale.maxX, scale.minZ).x" :y="viewBoxHeight - fontSize * 0.4" text-anchor="end">
+          一壘側
+        </text>
+      </g>
+
       <text
-        v-for="tick in zTicks"
-        :key="`z-label-${tick}`"
-        :x="toSvg(scale.minX, tick).x - 3"
-        :y="toSvg(scale.minX, tick).y + fontSize * 0.32"
-        text-anchor="end"
-      >{{ String(tick).replace('-', '−') }}</text>
-      <!-- 單位字放在最上面那個刻度數字的正上方，隔一行，不跟數字疊在一起 -->
-      <text
-        :x="toSvg(scale.minX, scale.maxZ).x - 3"
-        :y="Math.max(toSvg(scale.minX, scale.maxZ).y - fontSize * 0.9, fontSize * 0.85)"
-        text-anchor="end"
-      >cm</text>
+        :x="toSvg(0, 0).x"
+        :y="groundY - fontSize * 0.9"
+        :font-size="fontSize"
+        :class="tone.text"
+        text-anchor="middle"
+      >本壘板</text>
     </g>
 
-    <!-- x 軸刻度（下方，每 25cm） -->
-    <g :class="tone.line">
-      <line
-        v-for="tick in xTicks"
-        :key="`x-tick-${tick}`"
-        :x1="toSvg(tick, scale.minZ).x"
-        :y1="toSvg(tick, scale.minZ).y"
-        :x2="toSvg(tick, scale.minZ).x"
-        :y2="toSvg(tick, scale.minZ).y + 2"
-        stroke-width="0.5"
+    <!-- 捕手視角的本壘板尖端朝上，左右為打擊區示意。 -->
+    <g v-else data-testid="contact-grid-field" fill="none" stroke-linejoin="round">
+      <polygon
+        :points="[[-21.59, -20], [21.59, -20], [20.5, -10], [0, 0], [-20.5, -10]].map(([x, z]) => { const p = toSvg(x!, z!); return `${p.x},${p.y}` }).join(' ')"
+        :class="tone.line"
+        stroke-width="0.7"
+        opacity="0.65"
+        data-testid="contact-grid-home-plate"
       />
-    </g>
-    <g :class="tone.text" :font-size="fontSize" text-anchor="middle">
-      <text
-        v-for="tick in xTicks"
-        :key="`x-label-${tick}`"
-        :x="toSvg(tick, scale.minZ).x"
-        :y="toSvg(tick, scale.minZ).y + fontSize * 1.3"
-      >{{ String(tick).replace('-', '−') }}</text>
-    </g>
-
-    <!-- 方位字：捕手視角，−x 三壘側在左、+x 一壘側在右（不依打者慣用手翻轉） -->
-    <g :class="tone.text" :font-size="fontSize">
-      <text :x="toSvg(scale.minX, scale.minZ).x" :y="viewBoxHeight - fontSize * 0.4" text-anchor="start">
-        三壘側
-      </text>
-      <text :x="toSvg(scale.maxX, scale.minZ).x" :y="viewBoxHeight - fontSize * 0.4" text-anchor="end">
-        一壘側
-      </text>
+      <path
+        v-for="side in [-1, 1]"
+        :key="side"
+        :d="`M ${toSvg(side * 43, 0).x} ${groundY} H ${toSvg(side * 26, 0).x} L ${toSvg(side * 29, -21).x} ${toSvg(0, -21).y} H ${toSvg(side * 46, -21).x}`"
+        :class="tone.ground"
+        stroke-width="0.7"
+      />
     </g>
 
     <!-- 格號 1～9：淡淡標在每格正中，說明列寫「第 8 格」時對得上。只標位置，不依好壞球換色 -->
-    <g :class="tone.cellNumber" :font-size="cellNumberFontSize" text-anchor="middle" data-testid="contact-grid-cell-numbers">
+    <g :class="schematic ? tone.text : tone.cellNumber" :font-size="cellNumberFontSize" text-anchor="middle" data-testid="contact-grid-cell-numbers">
       <text
         v-for="cell in cellNumbers"
         :key="`cell-${cell.number}`"
@@ -378,7 +412,7 @@ const ariaLabel = computed(() => {
 
     <!-- 擊球點：輔助線 + 圓點 + 標籤 -->
     <template v-if="pointSvg">
-      <g v-if="showGuides" :class="tone.guide" stroke-dasharray="2 2">
+      <g v-if="showGuides && !schematic" :class="tone.guide" stroke-dasharray="2 2">
         <line
           :x1="toSvg(scale.minX, 0).x"
           :y1="pointSvg.y"
@@ -405,6 +439,7 @@ const ariaLabel = computed(() => {
         <title>{{ pointTitle ?? pointLabel }}</title>
       </circle>
       <text
+        v-if="!schematic"
         :x="pointSvg.x + (labelOnLeft ? -pointRadius - 3 : pointRadius + 3)"
         :y="pointSvg.y - pointRadius - 2"
         :text-anchor="labelOnLeft ? 'end' : 'start'"

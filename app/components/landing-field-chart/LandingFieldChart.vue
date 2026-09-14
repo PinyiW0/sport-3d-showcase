@@ -3,7 +3,6 @@ import type { FieldMarker, LandingPoint } from './core/fieldChart'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import {
   buildDistanceRingPoints,
-  buildFairTerritoryPoints,
   buildOutfieldArcPoints,
   computeFieldViewport,
   createFieldScale,
@@ -32,7 +31,7 @@ const props = withDefaults(
      * 不給就只寫「預測落點」
      */
     label?: string | readonly string[]
-    /** 距離弧、內野菱形、投手板點；預設顯示 */
+    /** 距離弧、紅土內野、壘包與投手丘；預設顯示 */
     showDecorations?: boolean
     /** 深色配色（淺色底上用 false）。不跟頁面 colorMode 走，底色由呼叫端鋪 */
     dark?: boolean
@@ -55,43 +54,38 @@ const props = withDefaults(
 
 const emit = defineEmits<{ select: [id: number] }>()
 
-// 深淺兩套線條與文字配色。視覺層級：落點 → 界外線與外野弧（規範邊界）→ 距離弧與內野（裝飾）→ 其他事件的點。
-// 落點與本壘到落點的虛線用紅色：界內區是綠色，紅點在上面最跳，也跟打擊姿態的紅球同一個顏色。
-// 落點與標籤文字的描邊（halo）是底色，壓在距離弧上時邊緣分得開。淺色的落點深一階（red-600），
-// 淺底疊上綠色界內區後，red-500 的對比只剩 3:1 左右，點會發虛。
-// 顏色只用 Tailwind 內建色盤（neutral、green、red），不用 Nuxt UI 的 primary：搬到沒有 Nuxt UI 的專案時，
-// primary-* 沒有定義，界內區會變成預設的黑色填色，整片球場塗黑。green 與本站 primary 同色。
+// 落點與白底資訊卡是主焦點；草地上的方位與刻度用淺色文字，距離弧保持低對比。
 const TONES = {
   light: {
-    fair: 'fill-green-500/10',
-    ring: 'stroke-neutral-400/60',
-    ringLabel: 'fill-neutral-500',
-    infield: 'stroke-neutral-400/70',
-    pitchersPlate: 'fill-neutral-400/70',
-    boundary: 'stroke-neutral-600',
-    home: 'fill-neutral-700',
-    homeLabel: 'fill-neutral-600',
+    grass: '#446d50',
+    ring: 'stroke-white/20',
+    ringLabel: 'fill-white/85',
+    dirt: '#d6a17c',
+    chalk: 'stroke-white/90',
+    plate: 'fill-white stroke-orange-900/40',
+    boundary: 'stroke-white/85',
+    homeLabel: 'fill-white/85',
     text: 'fill-neutral-500',
     guide: 'stroke-red-600',
     point: 'fill-red-600 stroke-neutral-100',
-    pointLabel: 'fill-neutral-800',
+    pointLabel: 'fill-neutral-900',
     other: 'fill-neutral-500/45 group-hover:fill-neutral-700 group-focus-visible:fill-neutral-700',
     halo: 'stroke-neutral-100',
     empty: 'fill-neutral-500',
   },
   dark: {
-    fair: 'fill-green-500/10',
-    ring: 'stroke-neutral-600/60',
-    ringLabel: 'fill-neutral-500',
-    infield: 'stroke-neutral-600/70',
-    pitchersPlate: 'fill-neutral-600/70',
-    boundary: 'stroke-neutral-400',
-    home: 'fill-neutral-300',
-    homeLabel: 'fill-neutral-400',
+    grass: '#304f3e',
+    ring: 'stroke-white/20',
+    ringLabel: 'fill-white/85',
+    dirt: '#bb8864',
+    chalk: 'stroke-white/85',
+    plate: 'fill-white stroke-orange-900/40',
+    boundary: 'stroke-white/75',
+    homeLabel: 'fill-white/85',
     text: 'fill-neutral-500',
     guide: 'stroke-red-500',
     point: 'fill-red-500 stroke-neutral-900',
-    pointLabel: 'fill-neutral-100',
+    pointLabel: 'fill-neutral-900',
     other: 'fill-neutral-400/45 group-hover:fill-neutral-200 group-focus-visible:fill-neutral-200',
     halo: 'stroke-neutral-900',
     empty: 'fill-neutral-500',
@@ -118,9 +112,9 @@ onMounted(() => {
 })
 onBeforeUnmount(() => observer?.disconnect())
 
-/** 輔助文字至少 11px、落點標籤至少 12px、其他事件點的點擊範圍至少 11px 半徑 */
+/** 輔助文字至少 11px、落點標籤至少 15px、其他事件點的點擊範圍至少 11px 半徑 */
 const MIN_TEXT_PX = 11
-const MIN_LABEL_PX = 12
+const MIN_LABEL_PX = 15
 const MIN_HIT_RADIUS_PX = 11
 
 /** 像素 → SVG 單位；還量不到寬度時回傳 0，讓 Math.max 退回設計值 */
@@ -132,12 +126,22 @@ function pxToUnits(px: number): number {
 const ringFontSize = computed(() => Math.max(3.2, pxToUnits(MIN_TEXT_PX - 1)))
 const textFontSize = computed(() => Math.max(3.6, pxToUnits(MIN_TEXT_PX)))
 const homeFontSize = computed(() => Math.max(4, pxToUnits(MIN_TEXT_PX)))
-const labelFontSize = computed(() => Math.max(4, pxToUnits(MIN_LABEL_PX)))
+const labelFontSize = computed(() => Math.max(4.8, pxToUnits(MIN_LABEL_PX)))
 const landingRadius = computed(() => Math.max(2, pxToUnits(4.5)))
-const homeRadius = computed(() => Math.max(1.2, pxToUnits(2.5)))
-const pitchersPlateRadius = computed(() => Math.max(1, pxToUnits(2)))
 
-const fairTerritoryPath = computed(() => toPathData(scale.value, buildFairTerritoryPoints(), true))
+// 草地維持 18 m 留邊：輪廓先外移 14 m，再加 4 m 圓角，避免轉角過度圓潤。
+const grassPath = computed(() => {
+  const offset = 14 * Math.SQRT2
+  const radius = OUTFIELD_ARC_RADIUS + 14
+  const center = OUTFIELD_ARC_CENTER_Y
+  // 外移後的界外線 y = |x| − offset 與外野圓相交。
+  const cornerX = (center + offset + Math.sqrt(2 * radius ** 2 - (center + offset) ** 2)) / 2
+  const arc = Array.from({ length: 73 }, (_, i) => {
+    const x = -cornerX + 2 * cornerX * i / 72
+    return { x, y: center + Math.sqrt(radius ** 2 - x ** 2) }
+  })
+  return toPathData(scale.value, [{ x: 0, y: -offset }, ...arc], true)
+})
 const outfieldArcPath = computed(() => toPathData(scale.value, buildOutfieldArcPoints()))
 
 const homeSvg = computed(() => scale.value.toSvg(0, 0))
@@ -149,7 +153,7 @@ const centerFieldLabelY = computed(() =>
 )
 /** 本壘標籤：放本壘下方，字變大時不超出視野底端 */
 const homeLabelY = computed(() =>
-  Math.min(homeSvg.value.y + homeFontSize.value * 1.4, scale.value.viewHeight - homeFontSize.value * 0.25),
+  Math.min(homeSvg.value.y + 6 + homeFontSize.value, scale.value.viewHeight - homeFontSize.value * 0.25),
 )
 
 const rings = computed(() => DISTANCE_RINGS_M.map((radius) => {
@@ -165,7 +169,17 @@ const rings = computed(() => DISTANCE_RINGS_M.map((radius) => {
 const infieldPath = computed(() =>
   toPathData(scale.value, [{ x: 0, y: 0 }, FIRST_BASE, SECOND_BASE, THIRD_BASE], true),
 )
-const pitchersPlateSvg = computed(() => scale.value.toSvg(PITCHERS_PLATE.x, PITCHERS_PLATE.y))
+// 紅土外緣繞過二壘，內側留草地；僅作示意，不改動壘位與資料座標。
+const infieldDirtPath = computed(() => {
+  const arc = Array.from({ length: 37 }, (_, i) => {
+    const angle = (165 - i * 150 / 36) * Math.PI / 180
+    return { x: 29 * Math.cos(angle), y: PITCHERS_PLATE.y + 29 * Math.sin(angle) }
+  })
+  const outer = [{ x: -3, y: -3 }, ...arc, { x: 3, y: -3 }]
+  const grass = [{ x: 0, y: 5 }, { x: 15, y: 20 }, { x: 0, y: 34 }, { x: -15, y: 20 }]
+  return `${toPathData(scale.value, outer, true)} ${toPathData(scale.value, grass, true)}`
+})
+const bases = [FIRST_BASE, SECOND_BASE, THIRD_BASE]
 
 const landingSvg = computed(() => (props.landing ? scale.value.toSvg(props.landing.x, props.landing.y) : null))
 const guidePath = computed(() => (landingSvg.value ? toPathData(scale.value, [{ x: 0, y: 0 }, props.landing!]) : ''))
@@ -203,40 +217,38 @@ function estimateEm(text: string): number {
   return em
 }
 
-/**
- * 標籤位置：預設疊在點的右上方；右邊放不下換左邊，兩邊都放不下（手機上字相對大）就置中在點的正上方，
- * 並夾在視野內。上方貼齊視野頂端時改放點的下方。
- */
+/** 白底落點資訊卡：優先放右上方，空間不足換左邊，卡片邊界保持在視野內。 */
 const labelLayout = computed(() => {
   const p = landingSvg.value
   if (!p)
     return null
   const fontSize = labelFontSize.value
   const lines = labelLines.value
-  const width = Math.max(...lines.map(estimateEm)) * fontSize
-  const gap = landingRadius.value + fontSize * 0.4
+  const width = Math.max(...lines.map((line, i) => estimateEm(line) * (i === 0 ? 1 : 0.8))) * fontSize
+  const padding = fontSize * 0.55
+  const cardWidth = width + padding * 2
+  const gap = landingRadius.value + fontSize * 0.65
   const viewWidth = scale.value.viewWidth
 
-  let anchor: 'start' | 'end' | 'middle' = 'start'
-  let x = p.x + gap
-  if (x + width > viewWidth - 1) {
-    if (p.x - gap - width >= 1) {
-      anchor = 'end'
-      x = p.x - gap
-    }
-    else {
-      anchor = 'middle'
-      x = Math.min(Math.max(p.x, width / 2 + 1), viewWidth - width / 2 - 1)
-    }
-  }
+  let cardX = p.x + gap
+  if (cardX + cardWidth > viewWidth - 1)
+    cardX = p.x - gap - cardWidth
+  cardX = Math.max(1, Math.min(cardX, viewWidth - cardWidth - 1))
 
-  const lineHeight = fontSize * 1.2
-  const blockHeight = lineHeight * lines.length
-  const fitsAbove = p.y - gap - blockHeight >= 0
-  const firstBaseline = fitsAbove
-    ? p.y - gap - (lines.length - 1) * lineHeight
-    : p.y + gap + fontSize * 0.9
-  return { anchor, x, firstBaseline, lineHeight }
+  const lineHeight = fontSize * 1.35
+  const cardHeight = fontSize + (lines.length - 1) * lineHeight + padding * 2
+  const cardY = Math.max(1, Math.min(p.y - gap - cardHeight, scale.value.viewHeight - cardHeight - 1))
+  return {
+    anchor: 'start' as const,
+    x: cardX + padding,
+    firstBaseline: cardY + padding + fontSize * 0.8,
+    lineHeight,
+    cardX,
+    cardY,
+    cardWidth,
+    cardHeight,
+    padding,
+  }
 })
 
 const noLandingSvg = computed(() => ({ x: scale.value.viewWidth / 2, y: scale.value.viewHeight * 0.15 }))
@@ -261,10 +273,18 @@ const ariaLabel = computed(() => {
     :aria-label="ariaLabel"
     data-testid="landing-field-chart"
   >
-    <!-- 界內區域淡淡填色，界線本身用較深的線描邊 -->
-    <path :d="fairTerritoryPath" :class="tone.fair" />
+    <!-- 草地底色，紅土與白色場地標線疊在上方 -->
+    <path :d="grassPath" :fill="tone.grass" :stroke="tone.grass" stroke-width="8" stroke-linejoin="round" />
 
-    <!-- 距離弧與內野：裝飾，比界線淡，可關 -->
+    <g v-if="showDecorations" aria-hidden="true">
+      <path :d="infieldDirtPath" :fill="tone.dirt" fill-rule="evenodd" />
+      <g :transform="`translate(${homeSvg.x} ${homeSvg.y}) scale(1 -1)`">
+        <circle cx="0" cy="0" r="6" :fill="tone.dirt" />
+        <circle :cx="PITCHERS_PLATE.x" :cy="PITCHERS_PLATE.y" r="3" :fill="tone.dirt" />
+      </g>
+    </g>
+
+    <!-- 距離弧與內野：裝飾，可關 -->
     <g v-if="showDecorations" data-testid="landing-field-decorations">
       <g v-for="ring in rings" :key="ring.radius">
         <path :d="ring.d" fill="none" :class="tone.ring" stroke-width="0.4" />
@@ -278,8 +298,21 @@ const ariaLabel = computed(() => {
           {{ ring.radius }} m
         </text>
       </g>
-      <path :d="infieldPath" fill="none" :class="tone.infield" stroke-width="0.5" />
-      <circle :cx="pitchersPlateSvg.x" :cy="pitchersPlateSvg.y" :r="pitchersPlateRadius" :class="tone.pitchersPlate" />
+      <path :d="infieldPath" fill="none" :class="tone.chalk" stroke-width="0.35" />
+      <g :transform="`translate(${homeSvg.x} ${homeSvg.y}) scale(1 -1)`" aria-hidden="true">
+        <rect
+          v-for="(base, i) in bases"
+          :key="i"
+          x="-0.9" y="-0.9" width="1.8" height="1.8"
+          :transform="`translate(${base.x} ${base.y}) rotate(45)`"
+          :class="tone.plate" stroke-width="0.15"
+        />
+        <rect x="-1.1" :y="PITCHERS_PLATE.y - 0.3" width="2.2" height="0.6" :class="tone.plate" stroke-width="0.12" />
+        <g fill="none" :class="tone.chalk" stroke-width="0.25">
+          <rect x="-3.6" y="-0.9" width="1.8" height="3.4" />
+          <rect x="1.8" y="-0.9" width="1.8" height="3.4" />
+        </g>
+      </g>
     </g>
 
     <!-- 界外線 + 外野弧：球場邊界公式，一律照畫 -->
@@ -289,16 +322,18 @@ const ariaLabel = computed(() => {
     </g>
 
     <!-- 方位標示：本壘、一壘側／三壘側、中外野 -->
-    <circle :cx="homeSvg.x" :cy="homeSvg.y" :r="homeRadius" :class="tone.home" />
+    <!-- 本壘尖端固定在 (0, 0)，板面朝向投手；適度放大以利小畫面辨識 -->
+    <path
+      :transform="`translate(${homeSvg.x} ${homeSvg.y}) scale(1 -1)`"
+      d="M0,0 L-1.1,1.1 L-1.1,2.2 L1.1,2.2 L1.1,1.1 Z"
+      :class="tone.plate" stroke-width="0.15"
+    />
     <text
       :x="homeSvg.x"
       :y="homeLabelY"
       text-anchor="middle"
       :font-size="homeFontSize"
-      :class="[tone.homeLabel, tone.halo]"
-      :stroke-width="homeFontSize * 0.25"
-      paint-order="stroke"
-      stroke-linejoin="round"
+      :class="tone.homeLabel"
     >
       本壘
     </text>
@@ -309,16 +344,13 @@ const ariaLabel = computed(() => {
     <text :x="scale.viewWidth - 2" :y="scale.viewHeight - textFontSize * 0.4" text-anchor="end" :font-size="textFontSize" :class="tone.text">
       一壘側 →
     </text>
-    <!-- 手機上字變大、被往下推到外野弧上，描邊讓它壓在線上也讀得清楚 -->
+    <!-- 中外野標籤置於深綠草地上，以淺色文字保持對比 -->
     <text
       :x="homeSvg.x"
       :y="centerFieldLabelY"
       text-anchor="middle"
       :font-size="textFontSize"
-      :class="[tone.text, tone.halo]"
-      :stroke-width="textFontSize * 0.25"
-      paint-order="stroke"
-      stroke-linejoin="round"
+      :class="tone.homeLabel"
     >
       中外野 122 m
     </text>
@@ -343,7 +375,8 @@ const ariaLabel = computed(() => {
 
     <!-- 落點：沒有落點時只顯示提示文字，球場照樣畫 -->
     <template v-if="landingSvg && labelLayout">
-      <path :d="guidePath" fill="none" :class="tone.guide" stroke-width="0.5" stroke-dasharray="2.5 2" />
+      <path :d="guidePath" fill="none" :class="tone.guide" stroke-width="0.7" stroke-dasharray="2.5 2" />
+      <circle :cx="landingSvg.x" :cy="landingSvg.y" :r="landingRadius + 0.7" fill="white" />
       <circle
         :cx="landingSvg.x"
         :cy="landingSvg.y"
@@ -354,13 +387,16 @@ const ariaLabel = computed(() => {
       >
         <title>{{ landingTitle }}</title>
       </circle>
+      <rect
+        :x="labelLayout.cardX" :y="labelLayout.cardY"
+        :width="labelLayout.cardWidth" :height="labelLayout.cardHeight"
+        :rx="labelLayout.padding * 0.6"
+        fill="white" class="pointer-events-none stroke-neutral-200" stroke-width="0.3"
+      />
       <text
         :font-size="labelFontSize"
         :text-anchor="labelLayout.anchor"
-        :class="[tone.pointLabel, tone.halo]"
-        :stroke-width="labelFontSize * 0.25"
-        paint-order="stroke"
-        stroke-linejoin="round"
+        :class="tone.pointLabel"
         class="pointer-events-none"
         data-testid="landing-point-label"
       >
@@ -369,7 +405,8 @@ const ariaLabel = computed(() => {
           :key="i"
           :x="labelLayout.x"
           :y="labelLayout.firstBaseline + i * labelLayout.lineHeight"
-          :font-weight="i === 0 ? 600 : undefined"
+          :font-weight="i === 0 ? 600 : 400"
+          :font-size="i === 0 ? labelFontSize : labelFontSize * 0.8"
         >{{ line }}</tspan>
       </text>
     </template>

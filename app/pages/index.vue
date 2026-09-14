@@ -382,7 +382,8 @@ function resetPreview(event: MouseEvent) {
 
             <!-- hover 層：影片鋪滿整張卡片（preload="none"，hover 才抓 webm）。
              object-cover 而非 contain——影片是 16:10、卡片較扁，contain 會留下左右空白，
-             而各模組影片底色不一（軌跡圖與轉軸為黑底、其餘白底），單一背景色補不平。 -->
+             而各模組影片底色不一（軌跡圖與轉軸為黑底、其餘白底），單一背景色補不平。
+             擊球九宮格例外：完整保留上方格線與下方本壘板，黑底補齊左右空間。 -->
             <div
               v-if="m.presentation && cardSize(m) !== 'tall'"
               class="pointer-events-none absolute inset-2 overflow-hidden opacity-0 transition-opacity duration-250 group-hover:opacity-100"
@@ -391,7 +392,8 @@ function resetPreview(event: MouseEvent) {
                 :src="asset(`/previews/${m.slug}.webm`)"
                 :poster="asset(`/previews/${m.slug}.jpg`)"
                 :aria-label="`${m.title} 呈現預覽`"
-                class="size-full object-cover"
+                class="size-full"
+                :class="m.slug === 'contact-point-grid' ? 'bg-black object-contain' : 'object-cover'"
                 muted
                 loop
                 playsinline

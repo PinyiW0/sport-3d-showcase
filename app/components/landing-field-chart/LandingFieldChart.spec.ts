@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
-import { computeFieldViewport, createFieldScale } from './core/fieldChart'
+import { computeFieldViewport, createFieldScale, DEFAULT_VIEW } from './core/fieldChart'
 import LandingFieldChart from './LandingFieldChart.vue'
 
 describe('landingFieldChart', () => {
@@ -36,8 +36,8 @@ describe('landingFieldChart', () => {
     const wrapper = mount(LandingFieldChart, { props: { landing } })
     const viewBox = wrapper.get('svg').attributes('viewBox')!
     const [, , , height] = viewBox.split(' ').map(Number)
-    // 預設高度是 138（128 - (-10)），落到本壘後方 59 m 會讓高度明顯變大
-    expect(height!).toBeGreaterThan(128 - -10)
+    // 落到本壘後方 59 m 會超出包含界外草地的預設視野
+    expect(height!).toBeGreaterThan(DEFAULT_VIEW.yMax - DEFAULT_VIEW.yMin)
   })
 
   it('label prop 有給時顯示在落點旁第二行', () => {
@@ -84,7 +84,7 @@ describe('landingFieldChart', () => {
     })
     expect(wrapper.find('[data-testid="landing-point-other"]').exists()).toBe(false)
     const [, , , height] = wrapper.get('svg').attributes('viewBox')!.split(' ').map(Number)
-    expect(height).toBe(128 - -10)
+    expect(height).toBe(DEFAULT_VIEW.yMax - DEFAULT_VIEW.yMin)
   })
 
   it('一壘側方位字不混用 +x 記號，與三壘側寫法對稱', () => {
