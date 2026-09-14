@@ -18,7 +18,10 @@ const m = computed(() => props.module)
 </script>
 
 <template>
-  <main class="mx-auto max-w-4xl space-y-8 px-6 py-12">
+  <main
+    class="mx-auto space-y-8 py-12"
+    :class="m.slug === 'landing-field-chart' ? 'max-w-6xl px-3 sm:px-6' : 'max-w-4xl px-6'"
+  >
     <header class="space-y-3">
       <NuxtLink
         to="/"
@@ -94,7 +97,7 @@ const m = computed(() => props.module)
             <dt class="shrink-0 text-neutral-500">
               格式
             </dt>
-            <dd class="font-mono text-xs">
+            <dd class="min-w-0 break-words font-mono text-xs">
               {{ m.data.format }}
             </dd>
           </div>
@@ -102,7 +105,7 @@ const m = computed(() => props.module)
             <dt class="shrink-0 text-neutral-500">
               樣本
             </dt>
-            <dd class="font-mono text-xs">
+            <dd class="min-w-0 break-words font-mono text-xs">
               {{ m.data.sampleUrl }}
             </dd>
           </div>

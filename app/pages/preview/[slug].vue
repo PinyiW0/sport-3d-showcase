@@ -3,7 +3,11 @@ import type { BatterLevel } from '~/components/baseball-field/core/batterLevels'
 import { BATTER_LEVELS, getStrikeZoneForLevel } from '~/components/baseball-field/core/batterLevels'
 import BaseballSpinViewer from '~/components/baseball-spin/BaseballSpinViewer.vue'
 import { parseSpinResult } from '~/components/baseball-spin/core/types'
+import BatterSwing3d from '~/components/batter-pose/BatterSwing3d.vue'
+import { formatExitDirectionBrief, formatMetricBrief } from '~/components/bpe-data/core/format'
 import SpinTiltClock from '~/components/clock-spin/SpinTiltClock.vue'
+import ContactPointGrid from '~/components/contact-point-grid/ContactPointGrid.vue'
+import LandingFieldChart from '~/components/landing-field-chart/LandingFieldChart.vue'
 import { filterPitches } from '~/components/pitch-distribution/core/distribution'
 import PitchDistribution from '~/components/pitch-distribution/PitchDistribution.vue'
 import Pose3dHuman from '~/components/pitch-pose/Pose3dHuman.vue'
@@ -113,6 +117,74 @@ const visibleMetricCount = ref(SERIES_METRIC_KEYS.length)
 let metricTimer: ReturnType<typeof setInterval> | undefined
 let metricDelay: ReturnType<typeof setTimeout> | undefined
 
+// --- BPE 兩個 2D 模組：呈現本身是靜態的，用「逐事件輪播」當動畫 ---
+// 只輪播有該項資料的事件：沒有擊球點（或落點）的事件畫出來是空圖，poster 拍到會像壞掉。
+// 球場圖另外排除會讓視野擴大的事件 #11（本壘後方 59 m）——4 秒的循環預覽裡突然縮放很跳，
+// 那個行為留給模組頁看。清單依落點分散程度挑，涵蓋左、中、右與遠近。
+const BPE_LANDING_CYCLE = [5, 4, 14, 8, 19, 7, 18, 10]
+const needsBpe = computed(() => ['batter-pose-skeleton', 'contact-point-grid', 'landing-field-chart'].includes(slug.value))
+const { entries: bpeEntries, selected: bpeSelected, outcome: bpeOutcome } = useBpeEvents(
+  slug.value === 'landing-field-chart' ? BPE_LANDING_CYCLE[0] : 0,
+  { enabled: needsBpe.value },
+)
+const bpeCycle = computed(() => {
+  if (slug.value === 'landing-field-chart')
+    return BPE_LANDING_CYCLE
+  return bpeEntries.value.flatMap((entry, i) => (entry.contact ? [i] : []))
+})
+let bpeTimer: ReturnType<typeof setInterval> | undefined
+const bpeResult = computed(() => (bpeOutcome.value?.ok ? bpeOutcome.value.result : null))
+const bpeZone = getStrikeZoneForLevel('adult')
+const bpeContactPoint = computed(() => {
+  const point = bpeResult.value?.contact?.pointCm
+  return point ? { x: point[0], z: point[2] } : null
+})
+const bpeLanding = computed(() => {
+  const point = bpeResult.value?.landingM
+  return point ? { x: point[0], y: point[1] } : null
+})
+const bpeLandingLabel = computed(() => {
+  const metrics = bpeResult.value?.metrics ?? []
+  const distance = metrics.find(metric => metric.key === 'distance')
+  const direction = metrics.find(metric => metric.key === 'exit_direction')
+  const lines = [
+    ...(distance ? [formatMetricBrief(distance.value, distance.unit)] : []),
+    ...(direction?.unit === 'degree' ? [formatExitDirectionBrief(direction.value)] : []),
+  ]
+  return lines.length ? lines : undefined
+})
+let bpeFallback: ReturnType<typeof setTimeout> | undefined
+function startBpePreview() {
+  if (bpeTimer)
+    return
+  bpeTimer = setInterval(() => {
+    const cycle = bpeCycle.value
+    if (!cycle.length)
+      return
+    const at = cycle.indexOf(bpeSelected.value)
+    bpeSelected.value = cycle[(at + 1) % cycle.length]!
+  }, 900)
+}
+
+// --- batter-pose-skeleton：只循環擊球前後那一段 ---
+// 整段 2.3 秒大半是站姿，從頭播的 4 秒預覽拍不到揮棒。改成循環擊球前 60 幀到後 40 幀、
+// 0.3× 慢放（事件 #0：擊球在第 124 幀、球體座標落在第 106–158 幀，拖尾整段看得到）。
+// 先停在擊球幀，等錄製腳本截完 poster 發出 preview-poster-taken 才往後播——poster 因此一定是
+// 擊球瞬間。不用頁面自己計時：SwiftShader 下 ready 到截圖的延遲隨機器快慢差好幾秒，
+// 算不準就會拍到繞了一圈的任意位置，太保守又會讓整段錄影都是停格。
+// 手動開這頁沒有錄製端時，資料到手 fallbackS 秒後自己起播（要比錄製端最慢的截圖時機還晚）。
+// 20 秒：球棒改成環境反射＋亮光漆後，SwiftShader 下從資料到手到截圖要十幾秒，8 秒會先起播、poster 拍到收棒
+const SWING_PREVIEW = { before: 60, after: 40, rate: 0.3, fallbackS: 20 }
+const bpeSwing = computed(() => (slug.value === 'batter-pose-skeleton' ? bpeResult.value?.swing ?? null : null))
+const swingFrame = ref(0)
+let swingRaf = 0
+let swingFallback: ReturnType<typeof setTimeout> | undefined
+/** 起播的 performance.now() 時間戳；null 表示還停在擊球幀 */
+let swingPlayFrom: number | null = null
+function startSwingPreview() {
+  swingPlayFrom ??= performance.now()
+}
+
 onMounted(() => {
   if (needsBt3d.value) {
     rotateTimer = setInterval(() => {
@@ -145,6 +217,28 @@ onMounted(() => {
       }, 700)
     }, 3000)
   }
+  // 封面固定在代表事件；錄製端截完封面才輪播，直接開頁則延後自動起播。
+  if (slug.value === 'contact-point-grid' || slug.value === 'landing-field-chart') {
+    window.addEventListener('preview-poster-taken', startBpePreview, { once: true })
+    bpeFallback = setTimeout(startBpePreview, 20_000)
+  }
+  if (slug.value === 'batter-pose-skeleton') {
+    window.addEventListener('preview-poster-taken', startSwingPreview, { once: true })
+    const loop = (now: number) => {
+      const swing = bpeSwing.value
+      if (swing?.contactFrame != null && swing.samplePeriodS) {
+        swingFallback ??= setTimeout(startSwingPreview, SWING_PREVIEW.fallbackS * 1000)
+        const from = Math.max(0, swing.contactFrame - SWING_PREVIEW.before)
+        const to = Math.min(swing.frames.length - 1, swing.contactFrame + SWING_PREVIEW.after)
+        const playedS = swingPlayFrom == null ? 0 : (now - swingPlayFrom) / 1000
+        const elapsed = Math.floor(playedS * SWING_PREVIEW.rate / swing.samplePeriodS)
+        // 從擊球幀往後接著播，繞回視窗起點時才跳，避免停格結束那一下倒退
+        swingFrame.value = from + ((swing.contactFrame - from + elapsed) % (to - from + 1))
+      }
+      swingRaf = requestAnimationFrame(loop)
+    }
+    swingRaf = requestAnimationFrame(loop)
+  }
 })
 onBeforeUnmount(() => {
   clearInterval(rotateTimer)
@@ -153,6 +247,12 @@ onBeforeUnmount(() => {
   clearInterval(levelTimer)
   clearInterval(metricTimer)
   clearTimeout(metricDelay)
+  clearInterval(bpeTimer)
+  clearTimeout(bpeFallback)
+  window.removeEventListener('preview-poster-taken', startBpePreview)
+  cancelAnimationFrame(swingRaf)
+  clearTimeout(swingFallback)
+  window.removeEventListener('preview-poster-taken', startSwingPreview)
 })
 
 const currentPitch = computed(() => pitches.value[rotatingIndex.value] ?? null)
@@ -208,6 +308,12 @@ const ready = computed(() => {
     return distributionPitches.value.length > 0
   if (slug.value === 'pose-metrics-chart')
     return poseMetrics.value.frameCount > 0
+  if (slug.value === 'contact-point-grid')
+    return bpeContactPoint.value != null
+  if (slug.value === 'landing-field-chart')
+    return bpeLanding.value != null
+  if (slug.value === 'batter-pose-skeleton')
+    return bpeSwing.value != null
   return false
 })
 </script>
@@ -277,6 +383,17 @@ const ready = computed(() => {
       />
     </div>
 
+    <!-- 九宮格 viewBox 是直式，以高度為準塞進畫布，左右留黑邊。容器要比 SVG 窄一點（7:10）：
+         這麼窄的畫面元件會放大字級、上下邊距跟著變高，容器比 SVG 矮的話下緣的刻度與方位字會被裁掉 -->
+    <div v-else-if="slug === 'contact-point-grid'" :style="{ height: `${PREVIEW_HEIGHT}px` }" class="aspect-[7/10]">
+      <ContactPointGrid :zone="bpeZone" :point="bpeContactPoint" schematic dark />
+    </div>
+
+    <!-- 球場圖含界外草地的 viewBox 為 188 × 172，保留上下留白避免預覽裁切 -->
+    <div v-else-if="slug === 'landing-field-chart'" :style="{ width: `${(PREVIEW_HEIGHT - 16) * 188 / 172}px` }">
+      <LandingFieldChart :landing="bpeLanding" :label="bpeLandingLabel" :show-decorations="true" dark />
+    </div>
+
     <!-- dark：這兩支的畫布底色寫在元件內（Plotly 白畫布 / three.js 白場景），
          外層的 bg-black 蓋不到，只能由元件自己翻深 -->
     <Pose3dSkeleton
@@ -284,6 +401,16 @@ const ready = computed(() => {
       :frames="poseClip.frames"
       :time-ms="clockMs"
       :height="PREVIEW_HEIGHT"
+      dark
+    />
+
+    <BatterSwing3d
+      v-else-if="slug === 'batter-pose-skeleton' && bpeSwing"
+      :swing="bpeSwing"
+      :frame="swingFrame"
+      :height="PREVIEW_HEIGHT"
+      :ball-model-url="asset('/models/baseball_detail.glb')"
+      :interactive="false"
       dark
     />
 
