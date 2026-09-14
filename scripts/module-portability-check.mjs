@@ -36,6 +36,9 @@ const RUNTIME_ALLOWED = {
   'pitch-trajectory-data': [],
   'pitch-trajectory': ['three'],
   'pitch-trajectory-plotly': ['plotly.js-dist-min'],
+  // BPE 揮棒結果：bpe-data 是三個模組共用的資料層，batter-pose 是其中唯一的 Three.js 版
+  'bpe-data': [],
+  'batter-pose': ['three'],
 }
 
 // 測試檔專用：測試不隨模組進入執行期，放寬到測試框架與讀 fixture 的 node 內建模組

@@ -4,7 +4,9 @@ import { defineAsyncComponent } from 'vue'
 // 全部 3D 研究模組的登錄表。索引頁與展示頁都讀這裡。
 // done  = 研究告一段落（baseball-spin、clock-spin、pitch-pose-skeleton、
 //         pitch-trajectory、strike-zone-grid、pitch-distribution）
-// wip   = 有可運作實作可點進去看，但還在調整（pitch-pose-human、pose-metrics-chart）
+// wip   = 有可運作實作可點進去看，但還在調整（pitch-pose-human、pose-metrics-chart、
+//         BPE 揮棒結果三模組 batter-pose-skeleton／contact-point-grid／landing-field-chart——
+//         資料都還在等演算法端人工確認）
 // planned = 尚未動工，四個必備區塊先給文字輪廓、參考資料選填
 
 // baseball-spin 樣本（後端 result.json 原格式，snake_case；取自 public/samples/spin/sample1）
@@ -97,6 +99,90 @@ const POSE3D_SAMPLE = `{
     ]
   }
 }`
+
+// BPE 揮棒結果樣本（演算法端 result-envelope-v2，2026-05-12 龍潭實測事件 #0）。三個模組共用同一份原檔，
+// 各自只摘出自己用到的欄位；外層 envelope 三份都留著，因為檢查關卡看的是 status 與 payload。
+const BPE_ENVELOPE_HEAD = `  "schema_version": "2.0.0",
+  "payload_schema_version": "2.1.0",
+  "module": "bpe",
+  "module_version": "0.1.0",
+  "pitch_id": "98b12f38-0315-5a9f-9118-5325c91a5a62",
+  "status": "success",
+  "error": null,`
+
+const BPE_SWING_SAMPLE = `{
+${BPE_ENVELOPE_HEAD}
+  "payload": {
+    "outcome": "hit",
+    "skeleton": {
+      "joint_names": ["nose", "left_eye", "… COCO-17 共 17 點 …", "bat_knob", "bat_head"],
+      "bones": [[15, 13], [13, 11], "… 共 20 組 …", [17, 18]]
+    },
+    "animation": {
+      "time_origin": "first_frame",
+      "sample_period_s": 0.008,
+      "frame_count": 288,
+      "trigger_time_s": 0.992869,
+      "frames": [
+        {
+          "time_s": 0.0,
+          "joints_cm": [[-40.604, 16.122, 162.003], "… 共 19 點，缺測為 null …"],
+          "ball_cm": null
+        },
+        "… 共 288 幀，ball_cm 有值的 44 幀 …"
+      ]
+    },
+    "contact": { "time_s": 0.992869, "point_cm": [0.458, 86.919, 48.998] },
+    "metrics": {
+      "bat_speed": { "value": 67.538, "unit": "km/h" },
+      "attack_angle": { "value": -8.58, "unit": "degree" },
+      "attack_direction": { "value": 4.562, "unit": "degree" },
+      "swing_path_tilt": { "value": 61.801, "unit": "degree" },
+      "time_to_contact": { "value": 0.236, "unit": "s" },
+      "swing_length": { "value": 140.3, "unit": "cm" },
+      "… 其餘 7 項見另外兩個模組 …": {}
+    }
+  }
+}`
+
+const BPE_CONTACT_SAMPLE = `{
+${BPE_ENVELOPE_HEAD}
+  "payload": {
+    "outcome": "hit",
+    "coordinate_system": {
+      "unit": "cm",
+      "origin": "home_plate_apex",
+      "axes": { "x": "first_base", "y": "pitcher_center_field", "z": "up" }
+    },
+    "contact": { "time_s": 0.992869, "point_cm": [0.458, 86.919, 48.998] },
+    "metrics": {
+      "contact_side": { "value": 0.458, "unit": "cm" },
+      "contact_height": { "value": 48.998, "unit": "cm" },
+      "… 其餘 11 項見另外兩個模組 …": {}
+    },
+    "… skeleton／animation／predicted_landing_point_m 本模組不用 …": {}
+  }
+}`
+
+const BPE_FLIGHT_SAMPLE = `{
+${BPE_ENVELOPE_HEAD}
+  "payload": {
+    "outcome": "hit",
+    "predicted_landing_point_m": [-6.876, 1.907, 0.0],
+    "metrics": {
+      "exit_velocity": { "value": 33.4, "unit": "km/h" },
+      "launch_angle": { "value": -28.5, "unit": "degree" },
+      "exit_direction": { "value": -91.6, "unit": "degree" },
+      "distance": { "value": 7.1, "unit": "m" },
+      "estimated_hang_time": { "value": 1.37, "unit": "s" },
+      "… 其餘 8 項見另外兩個模組 …": {}
+    },
+    "… skeleton／animation／contact 本模組不用 …": {}
+  }
+}`
+
+/** BPE 三個模組共用的樣本位置說明 */
+const BPE_SAMPLE_URL = 'public/samples/bpe/events/<event_id>.json（23 筆 2026-05-12 龍潭實測，每筆約 160KB，原檔只去縮排換行、欄位與數值未改）＋ public/samples/bpe/index.json（事件清單）'
 
 export const modules: ModuleSpec[] = [
   {
@@ -278,22 +364,193 @@ export const modules: ModuleSpec[] = [
   },
   {
     slug: 'batter-pose-skeleton',
-    title: '打者姿態 3D 骨架',
+    title: '打擊姿態 3D 骨架',
     sport: 'baseball',
-    status: 'planned',
-    summary: '以 3D 骨架重建打者揮棒姿態，供逐關節檢視與角度量測。渲染與播放層可直接複用 pitch-pose 系列，差別在資料來源是打者而非投手。',
-    tags: ['pose', 'skeleton', 'batting'],
-    tech: ['沿用 pitch-pose 的 Three.js 骨架渲染（PoseSkeletonScene + scene3d 軸盒）', '打者姿態估計輸出解析'],
+    status: 'wip',
+    summary: '把 BPE 揮棒結果的 19 點骨架（COCO-17 人體＋球棒兩端）逐幀播放：細線分析骨架（像專業動作分析軟體：細線加小顆關節亮點）、四肢左右分色，球棒照真實木棒的輪廓與木紋畫出，球用專案的 3D 棒球模型帶出 20 顆由細到粗的拖尾。以擊球為中心：載入時停在擊球幀、時間顯示「距擊球幾毫秒」，畫布上直接看得到棒速、攻擊角、啟動到擊球時間。可逐幀調整（±1、±10、輸入幀數、鍵盤），切換全景、打者特寫、側面、投手方向、俯視與深淺兩套配色；座標與擊球點九宮格、預測落點球場圖同一套，原點都是本壘板尖端。',
+    tags: ['Three.js', 'pose', 'skeleton', 'batting', 'BPE'],
+    updated: '2026-09',
+    presentation: defineAsyncComponent(() => import('~/components/modules/BatterPoseSkeletonShowcase.vue')),
+    tech: [
+      'Three.js（沿用 scene3d 的 Viewport 與 hover 標籤；骨架寫法同 pitch-pose）',
+      'BPE 座標直接當世界座標：scene3d 相機本來就 z-up，規範給的 three.js y-up 換算式用不到',
+      '骨架拓樸不寫死：一律讀檔內 joint_names 與 bones，球棒以名稱 bat_* 判定；左右半身、頭部也只看名稱分類',
+      '細線分析骨架（同參考實作的風格）：骨頭是固定 3px 的細線（LineSegments2，頭部 1.75px），在每個視角與縮放下都一樣俐落；關節是半徑 2.3 cm 的霧面小亮點（InstancedMesh ＋ MeshLambertMaterial）。四肢左右分色、軀幹中性、頭部細而淡',
+      '球棒照標準木棒輪廓做成旋轉體（LatheGeometry：握把尾端圓頭、細握把、漸粗過渡、打擊區、圓弧棒頭），木紋貼圖（固定種子，每次一樣）＋亮光漆（MeshPhysicalMaterial clearcoat）＋環境反射（RoomEnvironment），握把包深色握把布',
+      '深淺兩套畫布配色集中在 core/swingTheme.ts，場景與圖例共用同一份；背景是漸層、地面有微光，不是純黑純白',
+      '球用 baseball-spin 同一顆棒球模型（GLTFLoader，歸一化成單位球後複製 20 份、幾何共用、材質逐顆複製以各自設透明度）；沒給模型或載入失敗時退回規範的紅球',
+      '場景參照物照參考實作：不透明白色本壘板、只畫在地面的格線（每格 20 cm，本壘板周圍 3 m 內、往外漸層淡出）、指向投手的箭頭',
+      '球體拖尾固定 20 顆物件池：第 age 顆取目前幀往前第 age 幀的球，缺值就隱藏，不往更早的幀找補',
+      '拖尾只由目標幀決定、不累積歷史，所以播放、拖曳、逐幀、循環、換事件都不會殘影',
+      '取景依點本身、不框方盒的空角落，注視點挪到投影範圍中心：全景照規範框住整段動作的關節與球，打者特寫只框人體；播放中不重算，空間不會「呼吸」',
+      '五個視角一鍵切換：全景（預設）、打者特寫、側面（一壘側平視，看跨步與球棒高低）、投手方向、俯視（看相對本壘板的位置）；點目前這一顆就是重設視角',
+      '擊球標籤、操作提示、視角切換、圖例都疊在畫布上，出現或消失都不會推動控制列',
+      '播放時鐘以 time_s 對齊（二分搜尋查幀），預設 0.25×；載入與換事件時一律停在擊球幀、不自動播放（先看懂這一下在哪裡碰到球，也滿足規範的減少動態效果）',
+      '擊球是整個介面的視覺中心：畫布標籤、時間軸刻度「擊球」、跳至擊球按鈕、相對時間的 0 ms 都用琥珀色；時間軸下方顯示「距擊球 −120 ms／擊球 0 ms／擊球後 +80 ms」',
+      '本次揮棒三項核心數據（棒速、攻擊角、啟動到擊球時間）疊在畫布右上角，也放大成主卡片；其餘三項放次層。卡片一位小數、秒改毫秒，原始值與欄位名稱在提示裡',
+      '逐幀：±1、±10 按鈕與幀數輸入框都走播放時鐘的 step／seek（會先暫停）；鍵盤 ← → 逐幀、Shift 一次 10 幀、空白鍵播放暫停，焦點在輸入框、時間軸、選單上時讓給元件自己處理',
+      '場景 class 框架無關，Vue 元件只是薄殼；three 在 onMounted 才動態載入，卸載期間不留 WebGL context',
+      'Vue 3 / Nuxt 4',
+    ],
     data: {
-      summary: '每影格關節 3D 座標（世界座標）與骨架連結；需一致的座標系與揮棒事件（觸球瞬間）定義。',
-      format: '（規劃中）預期同 PitchPose3d，事件欄位由出手改為揮棒／觸球',
+      summary: '演算法端 BPE 揮棒結果（result-envelope-v2）的 skeleton 與 animation：每筆 287–288 幀、125 fps、約 2.3 秒；每幀 19 個關節座標與球體座標（cm，缺測為 null），另有擊球時間與六項揮棒數值。23 筆 2026-05-12 龍潭實測全部都有動畫。',
+      format: 'BpeSwing（bpe-data/core/parseBpeResult.ts；status 非 success 或 payload 缺少時整筆不畫）',
+      sample: BPE_SWING_SAMPLE,
+      sampleUrl: BPE_SAMPLE_URL,
     },
     handoff: {
-      files: ['（規劃中）沿用 app/components/pitch-pose/，補打者資料 adapter'],
-      flexPoints: ['骨架拓樸', '座標系對齊', '關節配色與標籤'],
+      files: [
+        'app/components/batter-pose/（整包 cp，含 core/ 與單元測試：拖尾取樣、取景的點與視角、骨架角色分類、配色、相對擊球時間、缺值統計、播放時鐘）',
+        'app/components/bpe-data/（解析、檢查關卡、缺值規則，必須一併帶走）',
+        'app/components/scene3d/（Three.js 樣板層）與 app/components/baseball-field/（本壘板頂點）',
+        'app/components/baseball-spin/core/normalize-model.ts（棒球模型歸一化；core/swingScene.ts 直接 import，不用模型也要帶）',
+        '要用棒球模型畫球 → public/models/baseball_detail.glb（約 700KB，與 baseball-spin 共用）',
+        'app/composables/useBpePlayback.ts（rAF 播放時鐘）與 app/composables/useBpeEvents.ts（樣本載入）；接真 API 時保留前者、換掉後者',
+        'app/composables/useLightCanvas.ts（「淺色畫布」開關，三個 BPE 模組共用）',
+        'public/samples/bpe/ 與 scripts/import-bpe-samples.mjs（換一批交付資料時重跑；交付包不進版控）',
+      ],
+      dependencies: ['模組本身不需要 Nuxt：元件明確 import vue，已在沒有 Nuxt、沒有 Nuxt UI 的純 Vue 專案通過型別檢查與單元測試；showcase 與 useBpePlayback／useBpeEvents 才需要 Nuxt 4', 'three', '@types/three（dev）', 'tailwindcss（圖例與元件的 class 樣式，只用內建色盤，不需要 Nuxt UI）'],
+      flexPoints: [
+        '球的外觀 ballModelUrl：給 glb 網址就用模型畫球，不給就畫規範的紅球',
+        '深淺兩套配色（core/swingTheme.ts 的 SWING_THEME：背景漸層、地面微光、格線、左右半身、軀幹、頭部、球棒、本壘板、箭頭）——圖例自動跟著換',
+        '地面格線與指向投手箭頭的尺寸（core/swingScene.ts 的 GRID_CELL_CM／GRID_RADIUS_CM／GRID_FADE_START_CM／PITCHER_ARROW）',
+        '拖尾顆數、球半徑與最小縮放（core/ballTrail.ts 的 BALL_TRAIL_LENGTH／BALL_TRAIL_RADIUS_CM／BALL_TRAIL_MIN_SCALE，都是顯示設定）',
+        '骨頭線寬 BODY_LINE_WIDTH_PX／HEAD_LINE_WIDTH_PX、關節半徑 JOINT_RADIUS_CM／HEAD_JOINT_RADIUS_CM、關節往白色混的比例 JOINT_TINT（core/swingTheme.ts）、三盞燈的強度（都是顯示設定）',
+        '木棒外型與質感（core/swingScene.ts 的 BAT_PROFILE 輪廓、BAT_GRIP 握把布、BAT_MATERIAL 亮光漆與環境反射強度，都是顯示設定）',
+        '五個視角的方向（core/swingFraming.ts 的 SWING_VIEW_EYE）；畫布上的核心數據是哪三項（showcase 的 KEY_METRIC_KEYS）',
+        '取景留白 FRAME_MARGIN 與畫布高度 height；深色畫布 dark；畫布右上角的數據面板用 stats slot 放內容；縮圖用 interactive=false 關掉疊在畫布上的標籤與按鈕',
+        '播放速率選項 BPE_PLAYBACK_RATES（預設 0.25×）與循環開關；快速跳幀的幀數（showcase 的 FAST_STEP_FRAMES，預設 10）',
+      ],
     },
+    limitations: [
+      '球的外觀刻意偏離規範：規範要求「球用與球棒不同的紅色」，本專案改用 3D 棒球模型（白球紅縫線）畫全部 20 顆拖尾，看起來更像真的。代價是預設視角下球只有幾個像素、要拉近才看得到縫線，且淺色畫布上白球拖尾的對比比紅球弱。元件不給模型網址就回到紅球。',
+      '手與球棒的細節無資料：COCO-17 每隻手只有一個手腕點，看不到握棒方式；球棒只有握把端（knob）與棒頭（head）兩點。畫面上的木棒輪廓、粗細、木紋與握把布都是顯示設定（照標準木棒畫），不是量測值；實際球棒的形狀、彎曲、握點與甜蜜點位置都無法呈現。',
+      '事件 #6 第 204–208 幀的右腳踝跳到 x ≈ 500 cm（離打者約 5 公尺），是姿態估計的離群值。依規範照畫不過濾，這會把該筆的取景撐大、打者被擠到畫面左上（打者特寫也一樣）；待演算法端確認。',
+      '全景框的是整段動作：擊球那一幀球棒放低，畫面上方會空著一塊，那是預備與收棒時球棒揮過的地方。想看清楚身體請切到打者特寫（球棒揮到最高處與球可能出框）。',
+      '球體座標只有擊球前後各一小段：23 筆的有效球體幀數從 3 到 130 不等，而且不含擊出後到落地的預測軌跡（規範明示）。要看球飛到哪，請看預測落點球場圖。',
+      '動畫播放以 time_s 對齊、查幀用二分搜尋；幀間隔在 23 筆裡都是固定 8 ms，若日後交付出現不等間隔，播放速度仍正確，但時間軸是依幀索引等距排列。',
+      '23 筆的 notes 全部標註 awaiting project-owner visual review，數值還沒經過人工確認；兩個 checkpoint 混用（事件 #0–#9 與 #10–#22 不同），姿態品質可能不一致。',
+    ],
     references: [
-      { label: '渲染與播放層可直接複用 pitch-pose-skeleton' },
+      { label: '繪圖規範：演算法端參考包的 frontend-render-guide.md §2（交付包不進版控，資料層摘要見 app/components/bpe-data/README.md）' },
+      { label: '拖尾規則、相機與範圍、配色的完整說明：app/components/batter-pose/README.md' },
+      { label: '骨架場景寫法與 WebGL 卸載防護沿用 pitch-pose（app/components/pitch-pose/core/poseSkeletonScene.ts）' },
+    ],
+  },
+  {
+    slug: 'contact-point-grid',
+    title: '擊球點九宮格',
+    sport: 'baseball',
+    status: 'wip',
+    summary: '把 BPE 揮棒結果的擊球點（球棒碰到球的位置）以捕手視角畫在好球帶九宮格上，看偏左右多少、多高。全部事件的擊球點疊在同一張圖上（選中的高亮、其他淡灰可點選切換），好球帶由打者級別推算；視野固定 150 × 200 cm，超出視野的點照座標擴大顯示、不裁切。可切換簡約呈現：聚焦好球帶，改畫本壘板與打擊區示意。',
+    tags: ['SVG', '2D', 'contact', 'BPE'],
+    updated: '2026-09',
+    presentation: defineAsyncComponent(() => import('~/components/modules/ContactPointGridShowcase.vue')),
+    tech: [
+      '純 SVG（無 3D 函式庫、無圖表庫）',
+      'SVG 單位 = 1 cm：橫縱天然等比例，擊球點半徑就是真實球半徑 3.65 cm',
+      '捕手視角 +x 在右——與 strike-zone-grid 刻意反轉 x 軸的畫法相反，因為 BPE 規範明定',
+      '只用 point_cm 的 x 與 z，y 不使用（等於把九宮格平面移到擊球點所在深度）',
+      '好球帶共用 baseball-field 的打者級別推算，與九宮格落點圖同一套規則',
+      '固定視野 x ±75、z 0–200 cm：23 筆全裝得下；超界才擴大，不 clamp',
+      '簡約呈現：視野縮到 x ±48、z −30 cm～好球帶上緣 +15 cm，拿掉刻度與點旁標籤，改畫本壘板五角形與打擊區示意；成棒時 5 筆擊球點會觸發擴大',
+      '不依「在不在好球帶內」換色——擊球點不是好壞球判定；格號 1～9 淡淡標在格子正中，只標位置',
+      '其他事件疊圖：讀 overview.json（23 筆拿掉骨架與動畫，約 33KB），每筆照樣過檢查關卡；灰點不讓視野擴大',
+      '字級與點的點擊範圍保證最小像素（ResizeObserver 量實際寬度換算回 SVG 單位）：手機窄欄裡字不會縮到讀不了',
+      '元件只吃 x／z 數字、不依賴 BPE 格式；檢查關卡與缺值規則在共用資料層 bpe-data',
+      'Vue 3 / Nuxt 4',
+    ],
+    data: {
+      summary: '演算法端 BPE 揮棒結果（result-envelope-v2）的 contact.point_cm（cm）與擊球點左右、高度兩項數值。23 筆 2026-05-12 龍潭實測，其中 14 筆有擊球點；疊圖用的 overview.json 是同一批結果拿掉骨架與動畫。好球帶不在資料裡，由打者級別推算。',
+      format: 'BpeResult.contact（bpe-data/core/parseBpeResult.ts；status 非 success 或 payload 缺少時整筆不畫）',
+      sample: BPE_CONTACT_SAMPLE,
+      sampleUrl: BPE_SAMPLE_URL,
+    },
+    handoff: {
+      files: [
+        'app/components/contact-point-grid/（整包 cp，含 core/ 與單元測試；元件只吃 x／z 數字，不依賴 bpe-data）',
+        'app/components/baseball-field/（好球帶與本壘板常數的單一來源，必須一併帶走）',
+        '要接 BPE 結果 → app/components/bpe-data/（解析、檢查關卡、缺值規則）＋ app/composables/useBpeEvents.ts（樣本載入）＋ app/components/modules/BpeMetricList.vue（數值面板）',
+        'showcase 另用 app/composables/useBpeOverview.ts（全部事件疊圖）、useBpeEventStepper.ts（上一筆／下一筆與 ← →）、useLightCanvas.ts（淺色畫布開關）',
+        'public/samples/bpe/ 與 scripts/import-bpe-samples.mjs（換一批交付資料時重跑；交付包不進版控）',
+      ],
+      dependencies: ['Nuxt 4（只有 showcase 需要，靠 auto-import 取得 ref/computed；模組本身只 import vue，已在沒有 Nuxt 的純 Vue 專案通過型別檢查與單元測試）', 'tailwindcss（線條與文字的顏色 class，只用內建色盤 neutral／green，不需要 Nuxt UI）'],
+      flexPoints: [
+        '好球帶 zone：有實際打者身高時傳 getStrikeZone(身高) 最準，級別代表身高只是後備',
+        '擊球點半徑 pointRadius（預設 3.65 cm = 真實球半徑）與輔助線開關 showGuides',
+        '簡約呈現 schematic（視野範圍在 core/contactGridScale.ts，本壘板與打擊區示意的尺寸在 ContactPointGrid.vue）',
+        '深淺配色 dark（showcase 的「淺色畫布」開關；兩套 class 在 ContactPointGrid.vue 的 TONES，SVG 透明、底色由外層鋪）',
+        '其他事件 others（id／x／z／label）與點選事件 select；最小字級與點擊範圍 MIN_TEXT_PX／MIN_LABEL_PX／MIN_HIT_RADIUS_PX（ContactPointGrid.vue）',
+        '預設視野與超界擴大邊距（core/contactGridScale.ts 的 DEFAULT_VIEW_X／DEFAULT_VIEW_Z／EXPAND_MARGIN_CM）',
+        '刻度與方位字的畫布邊距 PAD（ContactPointGrid.vue）',
+      ],
+    },
+    limitations: [
+      '好球帶用打者級別的代表身高推算：BPE 結果不含打者身高，所以九宮格只能當位置參考框，不能拿來判斷這一棒打的是不是好球。要更準得請資料端補上打者身高。',
+      '擊球點高度有三筆明顯偏高：事件 #5、#7、#11 分別是 132.8、168.0、143.2 cm，高於成棒好球帶上緣約 92 cm，#7 甚至接近打者頭部高度。依規範照座標畫、不過濾，但數值是否合理已列入待演算法端確認。',
+      'contact_side／contact_height 的量測基準還沒正式定義：團隊研究筆記暫定與 Trackman 的 ContactPosition 相同，演算法端的規範只說「等於 point_cm 的 x 與 z」。',
+      '23 筆的 notes 全部標註 awaiting project-owner visual review，數值還沒經過人工確認；9 筆沒有擊球點（contact 為 null），依規範不畫。',
+    ],
+    references: [
+      { label: '繪圖規範：演算法端參考包的 frontend-render-guide.md §3（交付包不進版控，資料層摘要見 app/components/bpe-data/README.md）' },
+      { label: '捕手視角與 strike-zone-grid 反轉畫法的差異：spec/domain/baseball-field-coordinates.md §6' },
+      { label: '擊球點的定義與作法：團隊內部研究筆記「擊球數據研究」（Contact side/height 暫定同 Trackman ContactPosition）' },
+    ],
+  },
+  {
+    slug: 'landing-field-chart',
+    title: '預測落點球場圖',
+    sport: 'baseball',
+    status: 'wip',
+    summary: '查看本次擊球的預測落點、飛行距離與方向。透過事件選單或左右箭頭切換揮棒紀錄，球場會依落點位置自動調整視野。',
+    tags: ['SVG', '2D', 'spray-chart', 'BPE'],
+    updated: '2026-09',
+    presentation: defineAsyncComponent(() => import('~/components/modules/LandingFieldChartShowcase.vue')),
+    tech: [
+      '純 SVG（無圖表庫）',
+      'SVG 單位 = 1 m：predicted_landing_point_m 是 payload 唯一的公尺欄位，直接當座標、不換算',
+      '界外線 y = |x|、外野弧 y = 44.912 + √(77.088² − x²)，兩者在 (±72.125, 72.125) 相接',
+      '外野弧用折線不用 SVG arc：翻轉 y 軸後 sweep-flag 不直覺，折線共用同一個座標轉換不會算錯',
+      '草地、紅土內野、壘包與打擊區提供場地參考；距離弧與內野細節可關閉',
+      '固定視野 x ±94、y −30–142 m，包含界外草地；落點超出才擴大（23 筆只有事件 #11 會觸發），不 clamp',
+      '落點旁用白底資訊卡顯示距離與方向（「56.3 m／一壘側 2.9°」），原始座標放滑鼠提示；資訊卡自動避開視野邊緣',
+      '字級與點的點擊範圍保證最小像素（ResizeObserver 量實際寬度換算回 SVG 單位）：手機上整張圖只剩兩百多像素寬，字不會縮到約 6px',
+      '元件只吃 x／y 數字、不依賴 BPE 格式；檢查關卡與缺值規則在共用資料層 bpe-data',
+      'Vue 3 / Nuxt 4',
+    ],
+    data: {
+      summary: '演算法端 BPE 揮棒結果的 predicted_landing_point_m（公尺，落地時 z 為 0）與擊球初速、仰角、方向、預測飛行距離、預估滯空時間五項數值。23 筆裡 17 筆有落點；沒有擊球點不代表沒有落點（事件 #3、#13、#20）。',
+      format: 'BpeResult.landingM（bpe-data/core/parseBpeResult.ts；status 非 success 或 payload 缺少時整筆不畫）',
+      sample: BPE_FLIGHT_SAMPLE,
+      sampleUrl: BPE_SAMPLE_URL,
+    },
+    handoff: {
+      files: [
+        'app/components/landing-field-chart/（整包 cp，含 core/ 與單元測試；零外部相依，不必連帶其他資料夾）',
+        '要接 BPE 結果 → app/components/bpe-data/（解析、檢查關卡、缺值規則）＋ app/composables/useBpeEvents.ts（樣本載入）＋ app/components/modules/BpeMetricList.vue（數值面板）',
+        'showcase 另用 app/composables/useBpeEventStepper.ts（上一筆／下一筆與 ← →）、useLightCanvas.ts（淺色畫布開關）',
+        'public/samples/bpe/ 與 scripts/import-bpe-samples.mjs（換一批交付資料時重跑；交付包不進版控）',
+      ],
+      dependencies: ['Nuxt 4（只有 showcase 需要，靠 auto-import 取得 ref/computed；模組本身只 import vue，已在沒有 Nuxt 的純 Vue 專案通過型別檢查與單元測試）', 'tailwindcss（線條與文字樣式，不需要 Nuxt UI；草地與紅土使用 SVG 填色）'],
+      flexPoints: [
+        '落點旁的標籤 label（字串或一行一項的陣列；showcase 放預測飛行距離與擊球方向）',
+        '其他事件 others（id／x／y／label）與點選事件 select；最小字級與點擊範圍 MIN_TEXT_PX／MIN_LABEL_PX／MIN_HIT_RADIUS_PX（LandingFieldChart.vue）',
+        '裝飾開關 showDecorations；距離弧刻度 DISTANCE_RINGS_M',
+        '深淺配色 dark（showcase 的「淺色畫布」開關；兩套配色在 LandingFieldChart.vue 的 TONES，草地與紅土是 hex 填色，草地外透明、底色由外層鋪）',
+        '預設視野與超界擴大邊距（core/fieldChart.ts 的 DEFAULT_VIEW／VIEW_EXPAND_MARGIN_M）',
+        '球場尺寸常數 FOUL_LINE_X／OUTFIELD_ARC_RADIUS／OUTFIELD_ARC_CENTER_Y（規範值，換球場規格才改）',
+      ],
+    },
+    limitations: [
+      '球場是規範給的固定尺寸（邊線 102 m、中外野 122 m），不是龍潭實際場地的量測；要疊在真實場地上得另外取得場地幾何。',
+      '擊球方向的正負規範沒有定義：畫面把正值寫成「一壘側」，是從樣本推定的（有落點的 17 筆裡 16 筆方向與落點 x 同號，例外的事件 #20 落點幾乎在正中）。演算法端確認前都只是推定。另外方向角與「本壘到落點」的方位角不一定相等（事件 #16 差到 37°），兩者不能互相代替。',
+      '預測飛行距離只用擊球初速與出射角推算，不含球的旋轉（Magnus 力）與空氣阻力。團隊研究筆記的結論是這個值只能粗估參考，不適合當精準指標。',
+      '有兩筆落點在本壘後方：事件 #11 在 y = −59.5 m（擊球方向 172.6°、距離 60 m），事件 #3 在 y = −3.5 m（擊球方向 −179°）。依規範照座標畫，#11 會讓視野往下擴大到把本壘後方也框進來；數值是否合理已列入待演算法端確認。',
+      '23 筆的 notes 全部標註 awaiting project-owner visual review，數值還沒經過人工確認；6 筆沒有落點，依規範不畫。',
+    ],
+    references: [
+      { label: '繪圖規範：演算法端參考包的 frontend-render-guide.md §4（交付包不進版控，資料層摘要見 app/components/bpe-data/README.md）' },
+      { label: '預測飛行距離的限制：團隊內部研究筆記「擊球數據研究」（只用初速與出射角推算，不含 Magnus）' },
     ],
   },
   {
