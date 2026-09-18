@@ -12,6 +12,7 @@ function spec(data: ModuleSpec['data']): ModuleSpec {
     title: '測試模組',
     sport: 'baseball',
     status: 'wip',
+    category: 'ball',
     summary: '摘要',
     tags: [],
     tech: ['Vue 3'],
