@@ -343,10 +343,10 @@ const ariaLabel = computed(() => {
       >本壘板</text>
     </g>
 
-    <!-- 捕手視角的本壘板尖端朝上，左右為打擊區示意。 -->
+    <!-- 捕手視角：本壘板 17 吋平邊在遠端朝投手，尖端朝近端（朝捕手）；左右為打擊區示意。 -->
     <g v-else data-testid="contact-grid-field" fill="none" stroke-linejoin="round">
       <polygon
-        :points="[[-21.59, -20], [21.59, -20], [20.5, -10], [0, 0], [-20.5, -10]].map(([x, z]) => { const p = toSvg(x!, z!); return `${p.x},${p.y}` }).join(' ')"
+        :points="[[-20.5, 0], [20.5, 0], [21.59, -10], [0, -20], [-21.59, -10]].map(([x, z]) => { const p = toSvg(x!, z!); return `${p.x},${p.y}` }).join(' ')"
         :class="tone.line"
         stroke-width="0.7"
         opacity="0.65"
