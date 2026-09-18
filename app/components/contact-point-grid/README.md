@@ -27,7 +27,7 @@
 | `zone` | `StrikeZoneBounds` | 必填 | 好球帶邊界（cm），由呼叫端依打者級別或實際身高算好再傳入；元件不自己決定 |
 | `point` | `{ x: number, z: number } \| null` | 必填 | 擊球點；`null` 表示這筆結果沒有擊球點，依規範不畫點 |
 | `pointRadius` | `number` | `BALL_RADIUS`（3.65） | 擊球點半徑（cm）。SVG 單位即 cm，預設值就是真實球的大小 |
-| `schematic` | `boolean` | `false` | 簡約呈現：視野縮到好球帶附近，拿掉地面線、刻度、方位字與點旁標籤，改畫捕手視角的本壘板（尖端朝上）與左右打擊區示意，格號放大。座標只留在滑鼠提示（`pointTitle`） |
+| `schematic` | `boolean` | `false` | 簡約呈現：視野縮到好球帶附近，拿掉地面線、刻度、方位字與點旁標籤，改畫捕手視角的本壘板（尖端朝下、朝捕手）與左右打擊區示意，格號放大。座標只留在滑鼠提示（`pointTitle`） |
 | `showGuides` | `boolean` | `true` | 擊球點到兩軸的虛線輔助線；簡約版沒有座標軸，一律不畫 |
 | `dark` | `boolean` | `false` | 深色配色。不跟頁面 colorMode 走；SVG 本身透明，底色由呼叫端鋪（淺色配 `neutral-100`、深色配 `neutral-900`，擊球點與文字的描邊就是這兩個底色） |
 | `others` | `ContactGridMarker[]` | `[]` | 其他事件的擊球點（`id`、`x`、`z`、選填 `label`），畫成淡灰小點、可點選。視野只依 `point` 決定，灰點不讓視野擴大，落在視野外的不畫——呼叫端要提示筆數可用 `core/contactGridScale.ts` 的 `isInView` 自己算 |
