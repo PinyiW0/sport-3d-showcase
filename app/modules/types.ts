@@ -10,6 +10,13 @@ import type { Component } from 'vue'
 export type ModuleStatus = 'done' | 'wip' | 'planned'
 export type Sport = 'baseball' | 'football'
 
+/**
+ * 模組分析的對象：選單依此分組。
+ * 刻意設為必填——新模組加進 registry 時就得選一個，選單自動長出來，
+ * 不必另外維護一份清單（維護兩份必定有一天不同步）。
+ */
+export type ModuleCategory = 'ball' | 'pitcher' | 'batter'
+
 /** 數據資料：這個模組吃什麼、格式為何、樣本在哪 */
 export interface ModuleDataSpec {
   /** 一句話講清楚吃什麼資料 */
@@ -51,6 +58,8 @@ export interface ModuleSpec {
   title: string
   sport: Sport
   status: ModuleStatus
+  /** 分析對象；選單的分組依據 */
+  category: ModuleCategory
   /** 卡片與頁面簡介 */
   summary: string
   tags: string[]
@@ -81,4 +90,11 @@ export const STATUS_LABEL: Record<ModuleStatus, string> = {
   done: '已完成',
   wip: '進行中',
   planned: '規劃中',
+}
+
+/** 選單分組的標題與順序：宣告順序即選單由上而下的順序 */
+export const CATEGORY_LABEL: Record<ModuleCategory, string> = {
+  ball: '球',
+  pitcher: '投手',
+  batter: '打者',
 }
