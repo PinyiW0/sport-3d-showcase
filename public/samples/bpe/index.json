@@ -9,7 +9,6 @@
     "source_frames": 286,
     "grid_slots_filled": 287,
     "null_metrics": 0,
-    "notes": "Algorithm-classified hit_jump; checkpoint=mix_taichung_tianmu_v1.pth; quality_flags=jump_contact; awaiting project-owner visual review",
     "ball_frames": 44
   },
   {
@@ -22,7 +21,6 @@
     "source_frames": 282,
     "grid_slots_filled": 281,
     "null_metrics": 13,
-    "notes": "Algorithm-classified hit_birth; checkpoint=mix_taichung_tianmu_v1.pth; quality_flags=no_pitch_track; awaiting project-owner visual review",
     "ball_frames": 13
   },
   {
@@ -35,7 +33,6 @@
     "source_frames": 284,
     "grid_slots_filled": 284,
     "null_metrics": 0,
-    "notes": "Algorithm-classified hit_jump; checkpoint=mix_taichung_tianmu_v1.pth; quality_flags=jump_contact; awaiting project-owner visual review",
     "ball_frames": 53
   },
   {
@@ -48,7 +45,6 @@
     "source_frames": 286,
     "grid_slots_filled": 286,
     "null_metrics": 8,
-    "notes": "Algorithm-classified hit_birth; checkpoint=mix_taichung_tianmu_v1.pth; quality_flags=high_fit_rmse|short_measured_track; awaiting project-owner visual review",
     "ball_frames": 13
   },
   {
@@ -61,7 +57,6 @@
     "source_frames": 284,
     "grid_slots_filled": 284,
     "null_metrics": 0,
-    "notes": "Algorithm-classified hit_jump; checkpoint=mix_taichung_tianmu_v1.pth; quality_flags=short_measured_track|jump_contact; awaiting project-owner visual review",
     "ball_frames": 29
   },
   {
@@ -74,7 +69,6 @@
     "source_frames": 287,
     "grid_slots_filled": 287,
     "null_metrics": 0,
-    "notes": "Algorithm-classified hit_jump; checkpoint=mix_taichung_tianmu_v1.pth; quality_flags=short_measured_track|jump_contact; awaiting project-owner visual review",
     "ball_frames": 15
   },
   {
@@ -87,7 +81,6 @@
     "source_frames": 285,
     "grid_slots_filled": 284,
     "null_metrics": 13,
-    "notes": "Algorithm-classified hit_birth; checkpoint=mix_taichung_tianmu_v1.pth; quality_flags=short_measured_track|no_pitch_track; awaiting project-owner visual review",
     "ball_frames": 7
   },
   {
@@ -100,7 +93,6 @@
     "source_frames": 284,
     "grid_slots_filled": 284,
     "null_metrics": 0,
-    "notes": "Algorithm-classified hit_birth; checkpoint=mix_taichung_tianmu_v1.pth; quality_flags=high_fit_rmse|short_measured_track|no_pitch_track; awaiting project-owner visual review",
     "ball_frames": 8
   },
   {
@@ -113,7 +105,6 @@
     "source_frames": 285,
     "grid_slots_filled": 284,
     "null_metrics": 0,
-    "notes": "Algorithm-classified hit_jump; checkpoint=mix_taichung_tianmu_v1.pth; quality_flags=short_measured_track|jump_contact; awaiting project-owner visual review",
     "ball_frames": 31
   },
   {
@@ -126,7 +117,6 @@
     "source_frames": 285,
     "grid_slots_filled": 284,
     "null_metrics": 0,
-    "notes": "Algorithm-classified hit_jump; checkpoint=mix_taichung_tianmu_v1.pth; quality_flags=ground_ball|short_measured_track|jump_contact; awaiting project-owner visual review",
     "ball_frames": 41
   },
   {
@@ -139,7 +129,6 @@
     "source_frames": 282,
     "grid_slots_filled": 282,
     "null_metrics": 0,
-    "notes": "Algorithm-classified hit_jump; checkpoint=checkpoint_best_ema.pth; quality_flags=short_measured_track|jump_contact; awaiting project-owner visual review",
     "ball_frames": 34
   },
   {
@@ -152,7 +141,6 @@
     "source_frames": 288,
     "grid_slots_filled": 287,
     "null_metrics": 0,
-    "notes": "Algorithm-classified hit_birth; checkpoint=checkpoint_best_ema.pth; quality_flags=no_pitch_track; awaiting project-owner visual review",
     "ball_frames": 13
   },
   {
@@ -165,7 +153,6 @@
     "source_frames": 286,
     "grid_slots_filled": 288,
     "null_metrics": 13,
-    "notes": "Algorithm-classified hit_birth; checkpoint=checkpoint_best_ema.pth; quality_flags=short_measured_track|no_pitch_track; awaiting project-owner visual review",
     "ball_frames": 3
   },
   {
@@ -178,7 +165,6 @@
     "source_frames": 286,
     "grid_slots_filled": 286,
     "null_metrics": 8,
-    "notes": "Algorithm-classified hit_jump; checkpoint=checkpoint_best_ema.pth; quality_flags=ground_ball|jump_contact; awaiting project-owner visual review",
     "ball_frames": 130
   },
   {
@@ -191,7 +177,6 @@
     "source_frames": 285,
     "grid_slots_filled": 285,
     "null_metrics": 0,
-    "notes": "Algorithm-classified hit_birth; checkpoint=checkpoint_best_ema.pth; quality_flags=short_measured_track; awaiting project-owner visual review",
     "ball_frames": 8
   },
   {
@@ -204,7 +189,6 @@
     "source_frames": 285,
     "grid_slots_filled": 285,
     "null_metrics": 13,
-    "notes": "Algorithm-classified hit_birth; checkpoint=checkpoint_best_ema.pth; quality_flags=short_measured_track|no_pitch_track; awaiting project-owner visual review",
     "ball_frames": 7
   },
   {
@@ -217,7 +201,6 @@
     "source_frames": 285,
     "grid_slots_filled": 285,
     "null_metrics": 0,
-    "notes": "Algorithm-classified hit_birth; checkpoint=checkpoint_best_ema.pth; quality_flags=short_measured_track|no_pitch_track; awaiting project-owner visual review",
     "ball_frames": 16
   },
   {
@@ -230,7 +213,6 @@
     "source_frames": 284,
     "grid_slots_filled": 284,
     "null_metrics": 13,
-    "notes": "Algorithm-classified hit_birth; checkpoint=checkpoint_best_ema.pth; quality_flags=no_pitch_track; awaiting project-owner visual review",
     "ball_frames": 15
   },
   {
@@ -243,7 +225,6 @@
     "source_frames": 287,
     "grid_slots_filled": 287,
     "null_metrics": 0,
-    "notes": "Algorithm-classified hit_birth; checkpoint=checkpoint_best_ema.pth; quality_flags=short_measured_track; awaiting project-owner visual review",
     "ball_frames": 11
   },
   {
@@ -256,7 +237,6 @@
     "source_frames": 286,
     "grid_slots_filled": 286,
     "null_metrics": 0,
-    "notes": "Algorithm-classified hit_birth; checkpoint=checkpoint_best_ema.pth; quality_flags=high_fit_rmse|short_measured_track; awaiting project-owner visual review",
     "ball_frames": 11
   },
   {
@@ -269,7 +249,6 @@
     "source_frames": 286,
     "grid_slots_filled": 286,
     "null_metrics": 2,
-    "notes": "Algorithm-classified hit_birth; checkpoint=checkpoint_best_ema.pth; quality_flags=ground_ball|no_pitch_track; awaiting project-owner visual review",
     "ball_frames": 13
   },
   {
@@ -282,7 +261,6 @@
     "source_frames": 285,
     "grid_slots_filled": 285,
     "null_metrics": 0,
-    "notes": "Algorithm-classified hit_birth; checkpoint=checkpoint_best_ema.pth; quality_flags=short_measured_track; awaiting project-owner visual review",
     "ball_frames": 14
   },
   {
@@ -295,7 +273,6 @@
     "source_frames": 282,
     "grid_slots_filled": 281,
     "null_metrics": 13,
-    "notes": "Algorithm-classified hit_birth; checkpoint=checkpoint_best_ema.pth; quality_flags=short_measured_track|no_pitch_track; awaiting project-owner visual review",
     "ball_frames": 10
   }
 ]
