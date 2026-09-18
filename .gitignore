@@ -44,3 +44,7 @@ playwright-report*/
 # 單檔已逼近 GitHub 100MB 上限）。要用的樣本另抽進 public/samples/，
 # 包內有什麼、欄位怎麼定義見同名的 doc/投手姿態frame.md
 doc/投手姿態frame/
+# 模組四區塊（數據資料／交接說明／已知限制／參考資料）的明文。
+# 本 repo 是 public：明文絕不進版控，版控裡只有 public/protected/modules.enc.json（AES-GCM 密文）。
+# 換電腦或新 clone 後，用 `npm run protect:decrypt` 輸入密碼救回明文。
+/protected/modules.plain.json
