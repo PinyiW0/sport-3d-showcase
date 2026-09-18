@@ -2,11 +2,8 @@ import type { ModuleSpec } from './types'
 import { defineAsyncComponent } from 'vue'
 
 // 全部 3D 研究模組的登錄表。索引頁與展示頁都讀這裡。
-// done  = 研究告一段落（baseball-spin、clock-spin、pitch-pose-skeleton、
-//         pitch-trajectory、strike-zone-grid、pitch-distribution）
-// wip   = 有可運作實作可點進去看，但還在調整（pitch-pose-human、pose-metrics-chart、
-//         BPE 揮棒結果三模組 batter-pose-skeleton／contact-point-grid／landing-field-chart——
-//         資料都還在等演算法端人工確認）
+// done  = 研究告一段落（目前 11 個模組全部在此狀態）
+// wip   = 有可運作實作可點進去看，但還在調整
 // planned = 尚未動工，四個必備區塊先給文字輪廓、參考資料選填
 
 // baseball-spin 樣本（後端 result.json 原格式，snake_case；取自 public/samples/spin/sample1）
@@ -190,6 +187,7 @@ export const modules: ModuleSpec[] = [
     title: '棒球轉軸視覺化',
     sport: 'baseball',
     status: 'done',
+    category: 'ball',
     summary: '吃演算法後端的 result.json，用 Three.js 重現該球真實旋轉（含縫線樣貌），並疊上依 spin_tilt 旋轉的轉軸指針。',
     tags: ['Three.js', 'spin-axis', 'glTF'],
     updated: '2026-07',
@@ -231,6 +229,7 @@ export const modules: ModuleSpec[] = [
     title: '時鐘轉軸',
     sport: 'baseball',
     status: 'done',
+    category: 'ball',
     summary: '把 spin_tilt 以 2D 時鐘面板呈現：盤面靜態、指針整組 rotate(spin_tilt.degrees)。與 baseball-spin 的 3D 指針是同一份資料的兩種呈現。',
     tags: ['SVG', '2D', 'spin-tilt'],
     updated: '2026-07',
@@ -270,6 +269,7 @@ export const modules: ModuleSpec[] = [
     title: '投球姿態 3D 骨架',
     sport: 'baseball',
     status: 'done',
+    category: 'pitcher',
     summary: '把多鏡位重建的 COCO-17 骨架逐幀播放，用 Three.js 畫點線圖；軸範圍固定，播放中空間不會跟著資料「呼吸」，且播放與視角操作天生解耦——拖曳旋轉不會被每秒 60 次的重繪打斷。',
     tags: ['Three.js', 'pose', 'skeleton', 'COCO-17'],
     updated: '2026-08',
@@ -314,7 +314,8 @@ export const modules: ModuleSpec[] = [
     slug: 'pitch-pose-human',
     title: '投球姿態 3D 真人模型',
     sport: 'baseball',
-    status: 'wip',
+    status: 'done',
+    category: 'pitcher',
     summary: '同一份 COCO-17 骨架，改用 three.js 把 keypoints retarget 到人形 glTF 模型驅動骨骼。目前是可運作的初版：手腕、脊椎等 COCO-17 沒有的關節為近似值，three.js 路線仍在研究調整中。另可切換為程式生成素體（keypoints 直接組幾何、無 retarget 近似），兩者都能疊上骨架看關節對應的身體部位。',
     tags: ['Three.js', 'pose', 'retarget', 'glTF'],
     updated: '2026-08',
@@ -366,7 +367,8 @@ export const modules: ModuleSpec[] = [
     slug: 'batter-pose-skeleton',
     title: '打擊姿態 3D 骨架',
     sport: 'baseball',
-    status: 'wip',
+    status: 'done',
+    category: 'batter',
     summary: '把 BPE 揮棒結果的 19 點骨架（COCO-17 人體＋球棒兩端）逐幀播放：細線分析骨架（像專業動作分析軟體：細線加小顆關節亮點）、四肢左右分色，球棒照真實木棒的輪廓與木紋畫出，球用專案的 3D 棒球模型帶出 20 顆由細到粗的拖尾。以擊球為中心：載入時停在擊球幀、時間顯示「距擊球幾毫秒」，畫布上直接看得到棒速、攻擊角、啟動到擊球時間。可逐幀調整（±1、±10、輸入幀數、鍵盤），切換全景、打者特寫、側面、投手方向、俯視與深淺兩套配色；座標與擊球點九宮格、預測落點球場圖同一套，原點都是本壘板尖端。',
     tags: ['Three.js', 'pose', 'skeleton', 'batting', 'BPE'],
     updated: '2026-09',
@@ -441,7 +443,8 @@ export const modules: ModuleSpec[] = [
     slug: 'contact-point-grid',
     title: '擊球點九宮格',
     sport: 'baseball',
-    status: 'wip',
+    status: 'done',
+    category: 'batter',
     summary: '把 BPE 揮棒結果的擊球點（球棒碰到球的位置）以捕手視角畫在好球帶九宮格上，看偏左右多少、多高。全部事件的擊球點疊在同一張圖上（選中的高亮、其他淡灰可點選切換），好球帶由打者級別推算；視野固定 150 × 200 cm，超出視野的點照座標擴大顯示、不裁切。可切換簡約呈現：聚焦好球帶，改畫本壘板與打擊區示意。',
     tags: ['SVG', '2D', 'contact', 'BPE'],
     updated: '2026-09',
@@ -501,7 +504,8 @@ export const modules: ModuleSpec[] = [
     slug: 'landing-field-chart',
     title: '預測落點球場圖',
     sport: 'baseball',
-    status: 'wip',
+    status: 'done',
+    category: 'batter',
     summary: '查看本次擊球的預測落點、飛行距離與方向。透過事件選單或左右箭頭切換揮棒紀錄，球場會依落點位置自動調整視野。',
     tags: ['SVG', '2D', 'spray-chart', 'BPE'],
     updated: '2026-09',
@@ -558,6 +562,7 @@ export const modules: ModuleSpec[] = [
     title: '來球 3D 軌跡圖',
     sport: 'baseball',
     status: 'done',
+    category: 'ball',
     summary: '用 Three.js 在同一個 3D 場景畫出投球軌跡、本壘板實體與好球帶九宮格；採暗色主題，世界單位直接是 cm，1cm 在三軸的視覺長度天生一致、空間不變形。',
     tags: ['Three.js', 'trajectory', '3D', 'strike-zone'],
     updated: '2026-08',
@@ -604,6 +609,7 @@ export const modules: ModuleSpec[] = [
     title: '九宮格落點圖',
     sport: 'baseball',
     status: 'done',
+    category: 'ball',
     summary: '把入壘點投影到好球帶九宮格的純 SVG 呈現，含好壞球幾何判定與本壘板、打擊區的透視底座；縮放為真實比例等比換算，不會把好球帶畫扁。',
     tags: ['SVG', 'strike-zone', '2D', '好壞球判定'],
     updated: '2026-07',
@@ -647,6 +653,7 @@ export const modules: ModuleSpec[] = [
     title: '落點分布圖',
     sport: 'baseball',
     status: 'done',
+    category: 'ball',
     summary: '一批投球在好球帶上的分布：九宮格熱區看集中在哪，散點疊圖看實際散布與框外的球，可依投手與球種篩選。與九宮格落點圖的分工是「這批球」對「這一球」。',
     tags: ['SVG', 'heatmap', 'distribution', '2D'],
     updated: '2026-07',
@@ -690,7 +697,8 @@ export const modules: ModuleSpec[] = [
     slug: 'pose-metrics-chart',
     title: '投手姿態數據線性圖',
     sport: 'baseball',
-    status: 'wip',
+    status: 'done',
+    category: 'pitcher',
     summary: '把單球的七條姿態角度疊在同一條 ±180 的角度軸上，橫軸為影格序號，配上抬腿／踏地／出手三條事件線，看動作鏈上各關節什麼時候到頂。三機影片接在圖上方共用同一個播放頭：播影片游標跟著走，拖圖表影片跟著跳。圖例可逐條點掉單獨看。',
     tags: ['SVG', 'line-chart', 'biomech', 'multi-series', 'video-sync'],
     updated: '2026-08',

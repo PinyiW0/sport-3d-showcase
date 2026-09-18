@@ -2,7 +2,7 @@
      這頁是展示站門面（hero + 3D 模型 + 卡片牆），不是資料密集的後台介面，
      依 creative-direction §3 吃行銷頁的 display 規則，hero 大標才解得開 text-5xl -->
 <script setup lang="ts">
-import type { ModuleSpec, ModuleStatus } from '~/modules/types'
+import type { ModuleCategory, ModuleSpec, ModuleStatus } from '~/modules/types'
 import BaseballLoader from '~/components/common/BaseballLoader.vue'
 import BorderGlow from '~/components/common/BorderGlow.vue'
 import LightRays from '~/components/common/LightRays.vue'
@@ -12,7 +12,7 @@ import ShuffleText from '~/components/common/ShuffleText.vue'
 import TargetCursor from '~/components/common/TargetCursor.vue'
 import ThreadLines from '~/components/common/ThreadLines.vue'
 import { modules } from '~/modules/registry'
-import { SPORT_LABEL, STATUS_LABEL } from '~/modules/types'
+import { CATEGORY_LABEL, SPORT_LABEL, STATUS_LABEL } from '~/modules/types'
 // Sport-3D 模組展示索引。新增模組往 app/modules/registry.ts 補一筆 ModuleSpec 即可。
 // 顯式 import：auto-import 會把 components/common/ 下的元件註冊成 CommonBorderGlow
 
@@ -36,41 +36,69 @@ const statusClass: Record<ModuleStatus, string> = {
   planned: 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
 }
 
-// 狀態篩選：選中的鈕沿用卡片標籤配色，一眼對得起來
+// 兩道篩選：分類是主要導覽軸走 tab，進度是次要條件走 select，兩者 AND
+type CategoryFilter = ModuleCategory | 'all'
 type StatusFilter = ModuleStatus | 'all'
 
-const selected = ref<StatusFilter>('all')
+const selectedCategory = ref<CategoryFilter>('all')
+const selectedStatus = ref<StatusFilter>('all')
 
-const filters = computed(() =>
-  (['all', 'done', 'wip', 'planned'] as const).map(value => ({
+// 分類 tab 的計數只看分類、不受進度篩選影響：數字跟著另一個篩選跳動會看不懂
+const categoryTabs = computed(() =>
+  (['all', ...Object.keys(CATEGORY_LABEL)] as CategoryFilter[]).map(value => ({
     value,
-    label: value === 'all' ? '全部' : STATUS_LABEL[value],
-    count: value === 'all' ? modules.length : modules.filter(m => m.status === value).length,
-    activeClass: value === 'all'
-      ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900'
-      : statusClass[value],
+    label: value === 'all' ? '全部' : CATEGORY_LABEL[value as ModuleCategory],
+    count: value === 'all' ? modules.length : modules.filter(m => m.category === value).length,
+  })),
+)
+
+const statusOptions = computed(() =>
+  (['all', 'done', 'wip', 'planned'] as StatusFilter[]).map(value => ({
+    value,
+    label: value === 'all'
+      ? `全部進度 ${modules.length}`
+      : `${STATUS_LABEL[value as ModuleStatus]} ${modules.filter(m => m.status === value).length}`,
   })),
 )
 
 const visibleModules = computed(() =>
-  selected.value === 'all' ? modules : modules.filter(m => m.status === selected.value),
+  modules.filter(m =>
+    (selectedCategory.value === 'all' || m.category === selectedCategory.value)
+    && (selectedStatus.value === 'all' || m.status === selectedStatus.value),
+  ),
 )
+
+// 空狀態要講清楚是哪些條件湊不出東西，使用者才知道要放掉哪一個
+const emptyHint = computed(() => {
+  const active = [
+    selectedCategory.value === 'all' ? null : CATEGORY_LABEL[selectedCategory.value],
+    selectedStatus.value === 'all' ? null : STATUS_LABEL[selectedStatus.value],
+  ].filter(Boolean)
+  return active.length ? `目前沒有符合「${active.join(' + ')}」的模組。` : '目前沒有模組。'
+})
+
+function clearFilters() {
+  selectedCategory.value = 'all'
+  selectedStatus.value = 'all'
+}
 
 // Bento 錯落排版：尺寸看模組本身的份量，不看它排第幾張——
 // 否則篩選一切換，同一個模組的大小就會跳動。空出來的洞交給 grid-flow-dense 補。
 type CardSize = 'large' | 'wide' | 'tall' | 'small'
 
+/** 說明超過這個字數就吃大卡：份量最重的幾個模組撐住版面的視覺重心 */
+const LARGE_SUMMARY_CHARS = 150
 /** 說明超過這個字數就吃寬卡：窄卡塞不下長說明，會被 line-clamp 砍成沒頭沒尾 */
-const WIDE_SUMMARY_CHARS = 100
+const WIDE_SUMMARY_CHARS = 90
 
 function cardSize(m: ModuleSpec): CardSize {
   if (!m.presentation)
     return 'small' // 規劃中，只有文字輪廓
-  if (m.status === 'done')
-    return 'large'
-  // 進行中的模組依說明長度分寬卡／直立卡。這是版面錯落的來源——全給 wide 的話
-  // 九張卡有七張同寬，bento 就退化成規整的兩欄。
+  // 份量看說明長度、不看 status——模組全部做完後 status 就分不出輕重，
+  // 大卡會蓋滿整面，bento 退化成規整的兩欄。兩道門檻把模組分成大／寬／直立三級。
   // 副作用要知道：改 summary 文案可能讓卡片換形狀，這是刻意的，卡片寬度本就該配合內容量。
+  if (m.summary.length > LARGE_SUMMARY_CHARS)
+    return 'large'
   return m.summary.length > WIDE_SUMMARY_CHARS ? 'wide' : 'tall'
 }
 
@@ -230,22 +258,31 @@ function resetPreview(event: MouseEvent) {
         </div>
       </header>
 
-      <nav class="mb-6 flex flex-wrap gap-2" aria-label="模組狀態篩選">
-        <button
-          v-for="f in filters"
-          :key="f.value"
-          type="button"
-          :aria-pressed="selected === f.value"
-          class="cursor-target px-3 py-1 text-sm font-medium transition"
-          :class="selected === f.value
-            ? f.activeClass
-            : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'"
-          @click="selected = f.value"
-        >
-          {{ f.label }}
-          <span class="ml-1 opacity-60 tabular-nums">{{ f.count }}</span>
-        </button>
-      </nav>
+      <div class="mb-6 flex flex-wrap items-center gap-3">
+        <nav class="flex flex-wrap gap-2" aria-label="模組分類篩選">
+          <button
+            v-for="t in categoryTabs"
+            :key="t.value"
+            type="button"
+            :aria-pressed="selectedCategory === t.value"
+            class="cursor-target px-3 py-2 text-sm font-medium transition"
+            :class="selectedCategory === t.value
+              ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900'
+              : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'"
+            @click="selectedCategory = t.value"
+          >
+            {{ t.label }}
+            <span class="ml-1 opacity-60 tabular-nums">{{ t.count }}</span>
+          </button>
+        </nav>
+        <USelect
+          v-model="selectedStatus"
+          :items="statusOptions"
+          size="md"
+          class="h-9 w-40"
+          aria-label="依進度篩選"
+        />
+      </div>
 
       <!-- auto-rows 固定列高，大卡才跨得出「兩列」的份量；手機單欄時回到自然高度 -->
       <section class="grid grid-flow-row-dense gap-5 sm:auto-rows-[12rem] sm:grid-cols-2 lg:grid-cols-4">
@@ -404,12 +441,23 @@ function resetPreview(event: MouseEvent) {
         </BorderGlow>
       </section>
 
-      <p
+      <div
         v-if="!visibleModules.length"
-        class="border border-dashed border-neutral-300 py-12 text-center text-sm text-neutral-500 dark:border-neutral-700"
+        class="border border-dashed border-neutral-300 py-12 text-center dark:border-neutral-700"
       >
-        目前沒有「{{ STATUS_LABEL[selected as ModuleStatus] }}」的模組。
-      </p>
+        <p class="text-sm text-neutral-500 dark:text-neutral-400">
+          {{ emptyHint }}
+        </p>
+        <UButton
+          class="mt-3"
+          size="sm"
+          color="neutral"
+          variant="outline"
+          @click="clearFilters"
+        >
+          清除篩選
+        </UButton>
+      </div>
 
       <footer class="mt-16 border-t border-neutral-200 pt-6 text-sm text-neutral-500 dark:border-neutral-800 dark:text-neutral-400">
         <p class="font-medium text-neutral-600 dark:text-neutral-300">
