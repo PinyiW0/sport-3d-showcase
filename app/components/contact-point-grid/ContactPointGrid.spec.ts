@@ -123,8 +123,8 @@ describe('簡約呈現', () => {
     expect(wrapper.findAll('[data-testid="contact-grid-cell-numbers"] text')).toHaveLength(9)
     expect(wrapper.get('[data-testid="contact-point"] title').text()).toContain('x 10.0')
     const vertices = wrapper.get('[data-testid="contact-grid-home-plate"]').attributes('points')!.split(' ').map(p => p.split(',').map(Number))
-    // 五角形中間的尖端高於其餘四個頂點（SVG y 越小越上方）。
-    expect(vertices[3]![1]).toBeLessThan(Math.min(...vertices.filter((_, i) => i !== 3).map(p => p[1]!)))
+    // 捕手視角：五角形的尖端朝捕手，低於其餘四個頂點（SVG y 越大越下方）。
+    expect(vertices[3]![1]).toBeGreaterThan(Math.max(...vertices.filter((_, i) => i !== 3).map(p => p[1]!)))
     await wrapper.setProps({ schematic: false })
     expect(wrapper.find('[data-testid="contact-grid-axes"]').exists()).toBe(true)
     expect(wrapper.get('[data-testid="contact-point-label"]').text()).toContain('x 10.0')
