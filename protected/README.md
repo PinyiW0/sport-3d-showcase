@@ -28,9 +28,60 @@ public/protected/modules.enc.json 密文。進版控，CI 建置時只需要這�
 
 ## 密碼
 
-一組共用密碼，存在你自己的密碼管理器裡。本機放在 `.env` 的 `SPORT3D_PROTECT_PASSWORD`（該檔已 gitignore）。
+一組共用密碼。腳本依序從三個地方找它：
+
+1. `SPORT3D_PROTECT_PASSWORD` 環境變數 —— CI 或臨時覆寫用
+2. **macOS 鑰匙圈**（service 名 `sport3d-protect`）—— 日常開發走這條
+3. 互動輸入 —— 前兩者都沒有時才問，輸入不回顯
 
 repo 裡任何地方都不留密碼，也不留提示。
+
+### 存進鑰匙圈
+
+在**真正的終端機**裡跑（Terminal.app、iTerm 等）：
+
+```bash
+security add-generic-password -a "$USER" -s sport3d-protect -w
+```
+
+它會提示 `password data:`，貼上密碼，不會回顯。
+
+注意：在某些包過一層的終端環境裡（例如編輯器內嵌的執行框），
+這個互動提示接不到輸入，會靜默存成空字串。存完先驗一下：
+
+```bash
+security find-generic-password -s sport3d-protect -w | wc -c
+```
+
+印出來的數字要等於密碼長度加一（結尾換行）。是 1 就表示存成空的了，
+加 `-U` 重存一次：`security add-generic-password -U -a "$USER" -s sport3d-protect -w`
+
+### 換一台電腦
+
+鑰匙圈會跟著 iCloud 同步（如果你開了鑰匙圈同步）。沒同步的話在新機器上重存一次即可。
+
+**密碼是唯一能解開明文的東西**，鑰匙圈以外建議另外存一份到密碼管理器。
+密碼掉了而本機又沒有 `modules.plain.json`，那 46KB 內容就永久鎖住了——
+AES-GCM 配 60 萬輪 PBKDF2 沒有後門，也沒有救援管道。
+
+### 換密碼
+
+有舊密碼就能換，流程是「解回明文 → 換密碼 → 重新加密」：
+
+```bash
+npm run protect:decrypt                       # 舊密碼解回明文（明文還在就跳過）
+security add-generic-password -U -a "$USER" -s sport3d-protect -w   # 存新密碼
+npm run protect:encrypt                       # 用新密碼重新加密
+npm run protect:verify                        # 確認解得開、內容沒變
+git add public/protected/modules.enc.json && git commit
+```
+
+**但換密碼救不回已經流出去的東西。** 每次 commit 密文，git 歷史就留一版，
+舊密碼永遠解得開歷史裡的舊密文。所以：
+
+- 例行更換（密碼沒外流）→ 照上面走就好
+- 因為外流而換 → 還要清掉 `public/protected/modules.enc.json` 的歷史版本
+  （`git filter-repo` + force push），否則等於沒換
 
 ## 換電腦、重新 clone 之後
 
