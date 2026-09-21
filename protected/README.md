@@ -110,14 +110,42 @@ node --env-file-if-exists=.env scripts/protect-decrypt.mjs --stdout
 
 ## 改了四區塊的內容之後
 
-改的是 `protected/modules.plain.json`，改完一定要重新加密，否則網站上還是舊的：
+把這兩個檔想成「桌上的原稿」與「保險箱裡的那份」：
+
+```
+protected/modules.plain.json        原稿，在你電腦上，不進版控
+public/protected/modules.enc.json   鎖起來的那份，網站讀這個
+```
+
+改原稿不會讓保險箱那份跟著變，要自己重新鎖一次：
 
 ```bash
 npm run protect:encrypt
 git add public/protected/modules.enc.json
 ```
 
-忘了這步的話 `npm run eslint` 會擋下來（`scripts/protected-content-check.mjs` 會比對密文裡的 slug 清單與 registry 是否一致）。
+### 忘記了會怎樣
+
+分兩種情況，擋得住的程度不一樣：
+
+| 你做了什麼 | 誰會抓到 |
+|---|---|
+| 改了某個模組的內容文字 | `npm run dev`／`build`／`generate` 啟動時印警告（見下）。`npm run eslint` **抓不到**——slug 清單沒變 |
+| 新增或刪除整個模組 | `npm run eslint` 直接紅，因為 registry 與密文的 slug 清單對不上 |
+
+第一種靠 `scripts/protect-staleness-check.mjs`，它掛在 `predev`／`prebuild`／`pregenerate`，
+每次啟動自動比對，發現原稿比較新就印：
+
+```
+⚠️  你改過 protected/modules.plain.json，但還沒重新加密。
+   網站讀的是加密後的那份，所以畫面上還是舊內容。
+   跑這行更新：npm run protect:encrypt
+```
+
+它**只提醒、不擋**，而且會真的解密比對內容再決定要不要喊——
+只看檔案時間會被 `git checkout` 騙到，害人白跑一次加密、產生 62KB 的無謂 diff。
+
+要主動確認的話跑 `npm run protect:verify`，它會解密逐字元比對。
 
 ## 四支指令
 

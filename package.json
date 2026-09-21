@@ -26,7 +26,10 @@
     "protect:encrypt": "node --env-file-if-exists=.env scripts/protect-encrypt.mjs",
     "protect:decrypt": "node --env-file-if-exists=.env scripts/protect-decrypt.mjs",
     "protect:verify": "node --env-file-if-exists=.env scripts/protected-content-check.mjs --deep",
-    "protect:leakscan": "node scripts/protect-leakscan.mjs"
+    "protect:leakscan": "node scripts/protect-leakscan.mjs",
+    "predev": "node --env-file-if-exists=.env scripts/protect-staleness-check.mjs",
+    "prebuild": "node --env-file-if-exists=.env scripts/protect-staleness-check.mjs",
+    "pregenerate": "node --env-file-if-exists=.env scripts/protect-staleness-check.mjs"
   },
   "dependencies": {
     "@nuxt/ui": "^4.6.0",
