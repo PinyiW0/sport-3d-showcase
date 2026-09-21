@@ -1,7 +1,7 @@
 import type { Component } from 'vue'
 
 // 模組展示頁的資料模型：一個 ModuleSpec 描述「一個 3D 研究模組」的
-// metadata 與五個固定區塊內容（模組呈現／數據資料／使用技術／交接說明／參考資料）。
+// metadata 與六個固定區塊內容（模組呈現／數據資料／使用技術／交接說明／已知限制／參考資料）。
 // 新增模組＝往 registry 補一筆 ModuleSpec（＋選配呈現元件）。
 
 // done   = 研究告一段落、呈現與資料都定案
@@ -53,6 +53,10 @@ export interface ModuleReference {
   href?: string
 }
 
+// 六個區塊分兩邊住：公開欄位（tech 等）留在這裡、會進 bundle，訪客不登入就看得到；
+// 數據資料／交接說明／已知限制／參考資料四個受保護區塊住 ProtectedModuleContent，
+// 只以密文形式存在 public/protected/modules.enc.json，不進 registry。
+// 刻意不留 optional 欄位當後路——加回來就等於把明文內容送進 bundle。
 export interface ModuleSpec {
   slug: string
   title: string
@@ -71,14 +75,6 @@ export interface ModuleSpec {
   presentation?: Component
   /** 使用技術 */
   tech: string[]
-  /** 數據資料 */
-  data: ModuleDataSpec
-  /** 交接說明 */
-  handoff: ModuleHandoff
-  /** 已知限制（非必填） */
-  limitations?: ModuleLimitation[]
-  /** 參考資料（非必填） */
-  references?: ModuleReference[]
 }
 
 export const SPORT_LABEL: Record<Sport, string> = {
@@ -98,3 +94,14 @@ export const CATEGORY_LABEL: Record<ModuleCategory, string> = {
   pitcher: '投手',
   batter: '打者',
 }
+
+/** 一個模組的受保護內容。不進 registry、不進 bundle，由密文資產解出 */
+export interface ProtectedModuleContent {
+  data: ModuleDataSpec
+  handoff: ModuleHandoff
+  limitations?: ModuleLimitation[]
+  references?: ModuleReference[]
+}
+
+/** 全站受保護內容：slug → 內容。即 protected/modules.plain.json 的頂層形狀 */
+export type ProtectedModuleMap = Record<string, ProtectedModuleContent>

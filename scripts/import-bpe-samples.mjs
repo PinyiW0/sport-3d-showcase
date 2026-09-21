@@ -77,7 +77,11 @@ for (const entry of index) {
   total += compact.length
   overview.push({ event_id: entry.event_id, result: withoutAnimation(envelope) })
 }
-await writeFile(join(OUT_DIR, 'index.json'), `${JSON.stringify(index, null, 2)}\n`)
+// notes 不進 public/：參考包的 notes 寫著模型 checkpoint 檔名、品質瑕疵標記與人工審核狀態，
+// 這些是內部資訊，而 public/ 下的東西會隨 nuxt generate 部署到公開網站上。
+// 前端沒有任何地方讀它的值（型別留著 notes?: string，資料有就吃得下）。
+const publicIndex = index.map(({ notes: _notes, ...entry }) => entry)
+await writeFile(join(OUT_DIR, 'index.json'), `${JSON.stringify(publicIndex, null, 2)}\n`)
 // 一筆一行：整份單行時 diff 看不出是哪一筆變了
 await writeFile(join(OUT_DIR, 'overview.json'), `[\n${overview.map(item => `  ${compactJson(item)}`).join(',\n')}\n]\n`)
 
