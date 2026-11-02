@@ -23,6 +23,12 @@ export const HOME_PLATE = {
   frontY: 43.18,
 } as const
 
+/**
+ * 好球帶平面的 Y(cm):本壘板尖端往投手 8.5 吋(本壘板中段)。
+ * 進壘點、好壞球判定都在這個平面取值,不是 y = 0。九宮格固定畫在這裡,不跟著軌跡末點走。
+ */
+export const STRIKE_ZONE_PLANE_Y = 21.59
+
 /** 本壘板五個頂點 (x, y),順序為 尖端 → 三壘側 → 前緣 → 一壘側,可直接餵給 SVG polygon */
 export const HOME_PLATE_POINTS: readonly (readonly [number, number])[] = [
   [0, 0],

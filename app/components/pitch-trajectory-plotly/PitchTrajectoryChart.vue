@@ -2,7 +2,7 @@
 import type { Point3D } from '../pitch-trajectory-data/core/trajectoryGeometry'
 import {
   buildStrikeZoneCorners,
-  PLATE_HALF_WIDTH_CM,
+  STRIKE_ZONE_PLANE_Y_CM,
 } from '../pitch-trajectory-data/core/trajectoryGeometry'
 import { usePitch3D } from './core/plotlyFigure'
 
@@ -46,8 +46,8 @@ let plotly: typeof import('plotly.js-dist-min') | null = null
 let disposed = false
 
 function buildFigure() {
-  const yPlane = props.trajectory.at(-1)?.[1] ?? PLATE_HALF_WIDTH_CM
-  const corners = buildStrikeZoneCorners(props.batterHeightCm, yPlane)
+  // 九宮格固定在好球帶平面,不讀軌跡末點的 y
+  const corners = buildStrikeZoneCorners(props.batterHeightCm, STRIKE_ZONE_PLANE_Y_CM)
   const traces = [
     ...createTrajectoryTraces(props.trajectory),
     createHomePlateTrace(),

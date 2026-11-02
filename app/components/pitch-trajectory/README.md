@@ -55,13 +55,15 @@ public/samples/bt3d/pitches.json
 
 `pitch_trajectory` 為後端輸出的 20 個內插點(cm)。前端逐點驗證「至少 3 個有限數值」,取前三個值為 `[x, y, z]`,不足 2 點的球整筆過濾掉(`useBt3dSamples.ts`)。首點即出手點(y 最大,約 1600 cm),末點即入壘點(與 `strike_zone_point` 相同)。
 
+> ⚠️ **換資料源前必讀**:「末點即入壘點」是本元件的前提。後端 BT3D 原始點列(`rawTraj`)末點停在 y ≈ 0、越過好球帶平面,不能直接餵,要先用擬合式截在 min(過 y = 21.59 cm, 首次落地)。做法見 [pitch-trajectory-data/README.md](../pitch-trajectory-data/README.md#軌跡末點必須是進壘點換資料源前必讀)。
+
 **2. 九宮格角點(`buildStrikeZoneCorners`,`trajectoryGeometry.ts`)**
 
 ```
 zTop    = 0.535 × 175(打者身高 cm)
 zBottom = 0.27  × 175
 x = ±21.59(本壘板半寬 cm)
-y = 軌跡末點的 y(入壘平面,約 21.59 cm)
+y = 21.59(好球帶平面,STRIKE_ZONE_PLANE_Y_CM;固定值,不讀軌跡末點)
 ```
 
 四個角點構成入壘平面上的矩形,再用 `linspace(start, end, 4)` 等分出中間 2 條橫線與 2 條直線(`buildStrikeZoneLines`)。
