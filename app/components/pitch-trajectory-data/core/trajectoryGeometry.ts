@@ -15,7 +15,7 @@
  * 完整定義見 spec/domain/baseball-field-coordinates.md
  */
 
-import { getStrikeZone, HOME_PLATE, HOME_PLATE_POINTS } from '../../baseball-field/core/fieldGeometry'
+import { getStrikeZone, HOME_PLATE, HOME_PLATE_POINTS, STRIKE_ZONE_PLANE_Y } from '../../baseball-field/core/fieldGeometry'
 
 export type Point3D = [number, number, number]
 
@@ -38,6 +38,9 @@ export interface PitchAnalysisResult {
 
 /** 本壘板半寬(cm)。場地幾何的單一來源見 baseball-field/core/fieldGeometry.ts */
 export const PLATE_HALF_WIDTH_CM = HOME_PLATE.halfWidth
+
+/** 好球帶平面的 Y(cm),九宮格固定畫在這裡。單一來源見 baseball-field/core/fieldGeometry.ts */
+export const STRIKE_ZONE_PLANE_Y_CM = STRIKE_ZONE_PLANE_Y
 
 /** 本壘板頂面五個點(cm),尖端朝捕手(y=0),前緣在 y=43.18 */
 const HOME_PLATE_TOP: Point3D[] = HOME_PLATE_POINTS.map(([x, y]) => [x, y, 0] as Point3D)
@@ -93,7 +96,7 @@ export function parsePitchTrajectory(result: Pick<PitchAnalysisResult, 'pitch_tr
 /**
  * 步驟 2:由打者身高算出九宮格四個角,順序為 左上 → 右上 → 右下 → 左下。
  * @param batterHeightCm - 打者身高(cm)
- * @param yPlaneCm - 九宮格所在的 y 平面(cm),通常取入壘點的 y(軌跡最後一點)
+ * @param yPlaneCm - 九宮格所在的 y 平面(cm),一律傳 STRIKE_ZONE_PLANE_Y_CM
  */
 export function buildStrikeZoneCorners(
   batterHeightCm: number,

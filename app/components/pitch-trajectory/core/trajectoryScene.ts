@@ -36,7 +36,7 @@ import {
   buildStrikeZoneLines,
   CHART_THEME,
   computeTrajectoryRange,
-  PLATE_HALF_WIDTH_CM,
+  STRIKE_ZONE_PLANE_Y_CM,
 } from '../../pitch-trajectory-data/core/trajectoryGeometry'
 import { createAxisBox, LABEL_MARGIN, rangeToBounds } from '../../scene3d/core/axisBox'
 import { disposeObject3D, Viewport } from '../../scene3d/core/viewport'
@@ -130,7 +130,7 @@ export class TrajectoryScene {
     if (points.length >= 2) {
       this.content.add(this.buildPath(points))
       this.content.add(this.buildMarkers(points))
-      this.content.add(this.buildStrikeZone(points))
+      this.content.add(this.buildStrikeZone())
     }
 
     this.frameCamera(range)
@@ -198,8 +198,9 @@ export class TrajectoryScene {
   }
 
   /** 九宮格：外框一條閉合折線 + 4 條內部分隔線。 */
-  private buildStrikeZone(points: Point3D[]): Group {
-    const yPlane = points.at(-1)?.[1] ?? PLATE_HALF_WIDTH_CM
+  // 九宮格固定在好球帶平面,不讀軌跡末點的 y:餵後端原始點列時末點會越過平面
+  private buildStrikeZone(): Group {
+    const yPlane = STRIKE_ZONE_PLANE_Y_CM
     const { outline, grid } = buildStrikeZoneLines(
       buildStrikeZoneCorners(this.batterHeightCm, yPlane),
     )
